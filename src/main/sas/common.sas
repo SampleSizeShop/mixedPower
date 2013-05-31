@@ -27,8 +27,8 @@ libname outFig '..\..\..\output\figures';
 
 * output directory for tables ;
 libname outTab '..\..\..\output\tables';
-%LET OUT_TABLES_DIR = ..\output\tables;
+%LET OUT_TABLES_DIR = ..\..\..\output\tables;
 
 * output directory for automated reports, logs, and listings;
 libname outRep '..\..\..\output\reports';
-%LET OUT_REPORT_DIR = ..\output\reports;
+%LET OUT_REPORT_DIR = ..\..\..\output\reports;
