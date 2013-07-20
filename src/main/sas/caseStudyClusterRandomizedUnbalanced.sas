@@ -27,8 +27,8 @@
 * Generate the data sets
 */
 proc iml;
-	%INCLUDE "simulateMixedModel.sxs"/NOSOURCE2;
-	%INCLUDE "calculatePowerKenwardRoger.sxs"/NOSOURCE2;
+	%INCLUDE "&MODULES_DIR\simulateMixedModel.sxs"/NOSOURCE2;
+	%INCLUDE "&MODULES_DIR\calculatePowerKenwardRoger.sxs"/NOSOURCE2;
 Xessence = {
 	1 0 ,
 	0 1
