@@ -7,77 +7,108 @@
 #
 #
 
-setClass ("studyDesign",
-          representation ( id = "character",
+setClass ("mixedStudyDesign",
+          representation ( name = "character",
                            description = "character",
                            X = "matrix",
-                           B = "matrix",
+                           beta = "matrix",
                            Sigma = "matrix",
                            C = "matrix",
-                           U = "matrix",
-                           ThetaNull = "matrix"
+                           thetaNull = "matrix"
+                           sascall = "character"
                            ),
-          prototype ( id ="generic Two-sample T-test",
-                      description ="A two group study design",
-                      X = diag(2),
-                      B = as.matrix(c(1,0),nrow=2),
-                      Sigma = diag(1),
-                      C = as.matrix(c(1,-1), nrow=1),
-                      U = diag(1),
-                      ThetaNull = as.matrix(c(0)))
+          prototype ( name ="",
+                      description ="",
+                      X = matrix(),
+                      beta = matrix(),
+                      Sigma = matrix(),
+                      C = matrix(),
+                      thetaNull = matrix(),
+                      sascall = ""
           )
+)
 
-setMethod("id", "studyDesign",function)
+## validation routines ##
 
+setGeneric("validObject", function(object) standardGeneric("validObject"))
+setMethod("validObject", "mixedStudyDesign", function(object){
+  # TODO
+  return(TRUE);
+})
 
-
-
-function (generic, signature, file, external = FALSE, where = topenv(parent.frame())) 
-{
-  fdef <- getGeneric(generic, where = where)
-  if (is.null(fdef)) {
-    fdef <- implicitGeneric(generic, where = where)
-    if (is.null(fdef)) 
-      stop(gettextf("No function definition found for %s", 
-                    sQuote(generic)), domain = NA)
-  }
-  else {
-    generic <- fdef@generic
-  }
-  signature <- matchSignature(signature, fdef)
-  if (length(signature) == 0) 
-    signature <- "ANY"
-  sigNames <- fdef@signature
-  length(sigNames) <- length(signature)
-  method <- function() {
-  }
-  formals(method) <- formals(fdef)
-  body(method) <- quote({
-    stop("Need a definition for the method here")
+## Getters / Setters ##
+setGeneric("name", function(object) standardGeneric("name"))
+setMethod("name", "mixedStudyDesign", function(object){return(object@name)})
+setGeneric("name<-", function(object, value) standardGeneric("name<-"))
+setReplaceMethod("name", "mixedStudyDesign", function(object, value){
+  object@name <- value
+  validObject(object)
+  object
   })
-  methodName <- paste(c(generic, signature), collapse = "_")
-  if (missing(file)) 
-    file <- paste0(methodName, ".R")
-  output <- c(paste0("setMethod(\"", generic, "\","), paste0("    signature(", 
-                                                             paste0(sigNames, " = \"", signature, "\"", collapse = ", "), 
-                                                             "),"))
-  method <- deparse(method)
-  if (identical(external, FALSE)) 
-    output <- c(output, paste0("    ", method), ")")
-  else {
-    if (is(external, "character")) 
-      methodName <- toString(external)
-    method[[1L]] <- paste0("`", methodName, "` <- ", method[[1L]])
-    output <- c(method, "", output, paste0("  `", methodName, 
-                                           "`)"))
-  }
-  writeLines(output, file)
-  message("Skeleton of method written to ", if (is.character(file)) 
-    file
-          else "connection")
-  invisible(file)
-}
+
+setGeneric("description", function(object) standardGeneric("description"))
+setMethod("description", "mixedStudyDesign", function(object){return(object@description)})
+setGeneric("description<-", function(object, value) standardGeneric("description<-"))
+setReplaceMethod("description", "mixedStudyDesign", function(object, value){
+  object@description <- value
+  validObject(object)
+  object
+})
+
+setGeneric("XMatrix", function(object) standardGeneric("XMatrix"))
+setMethod("XMatrix", "mixedStudyDesign", function(object){return(object@X)})
+setGeneric("XMatrix<-", function(object, value) standardGeneric("XMatrix<-"))
+setReplaceMethod("XMatrix", "mixedStudyDesign", function(object, value){
+  object@X <- value
+  validObject(object)
+  object
+})
+
+setGeneric("BetaMatrix", function(object) standardGeneric("BetaMatrix"))
+setMethod("BetaMatrix", "mixedStudyDesign", function(object){return(object@Beta)})
+setGeneric("BetaMatrix<-", function(object, value) standardGeneric("BetaMatrix<-"))
+setReplaceMethod("BetaMatrix", "mixedStudyDesign", function(object, value){
+  object@Beta <- value
+  validObject(object)
+  object
+})
+
+setGeneric("SigmaMatrix", function(object) standardGeneric("SigmaMatrix"))
+setMethod("SigmaMatrix", "mixedStudyDesign", function(object){return(object@Sigma)})
+setGeneric("SigmaMatrix<-", function(object, value) standardGeneric("SigmaMatrix<-"))
+setReplaceMethod("SigmaMatrix", "mixedStudyDesign", function(object, value){
+  object@Sigma <- value
+  validObject(object)
+  object
+})
+
+setGeneric("contrast", function(object) standardGeneric("contrast"))
+setMethod("contrast", "mixedStudyDesign", function(object){return(object@C)})
+setGeneric("contrast<-", function(object, value) standardGeneric("contrast<-"))
+setReplaceMethod("contrast", "mixedStudyDesign", function(object, value){
+  object@C <- value
+  validObject(object)
+  object
+})
 
 
+setGeneric("thetaNullMatrix", function(object) standardGeneric("thetaNullMatrix"))
+setMethod("thetaNullMatrix", "mixedStudyDesign", function(object){return(object@ThetaNull)})
+setGeneric("thetaNullMatrix<-", function(object, value) standardGeneric("thetaNullMatrix<-"))
+setReplaceMethod("thetaNullMatrix", "mixedStudyDesign", function(object, value){
+  object@ThetaNull <- value
+  validObject(object)
+  object
+})
+
+
+setGeneric("sascall", function(object) standardGeneric("sascall"))
+setMethod("sascall", "mixedStudyDesign", function(object){return(object@sascall)})
+setGeneric("sascall<-", function(object, value) standardGeneric("sascall<-"))
+setReplaceMethod("sascall", "mixedStudyDesign", function(object, value){
+  object@ThetaNull <- value
+  validObject(object)
+  object
+})
               
-test = new("studyDesign")
+test = new("mixedStudyDesign")
