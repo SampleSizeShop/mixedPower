@@ -30,6 +30,10 @@ MODULES_DIR = "../../modules/R/";
 # Define the studyDesign class
 #
 source(paste(MODULES_DIR,"studyDesign.R",sep=""))
+#
+# load the SAS simulation module
+#
+source(paste(MODULES_DIR,"sasEmpiricalPower.R"),sep="")
 
 #
 # Load the study designs
@@ -39,28 +43,6 @@ source(paste(MODULES_DIR,"studyDesign.R",sep=""))
 #
 source(paste(INPUT_DIR,"studyDesignList.R"))
 
-#
-# calculateEmpiricalPower
-#
-# Calculates empirical power for the given study design object.
-# Executes a SAS macro from the command line to do so.
-# Results are written to the specified data set
-#
-# Arguments:
-# studyDesign - an object describing the study design matrices
-# outputDatasetName - name of the output dataset
-#
-# Returns:
-# None, but writes output dataset
-#
-# throws:
-# simpleError on failure
-#
-calculateEmpiricalPower <- function(studyDesign, 
-                                    outputDatasetName="empiricalPower") {
-  sascode = generateSASCode(studyDesign, outputDatasetName)
-  cat(sascode,file=paste(OUTPUT_DATA_DIR,"gen-",studyDesig$id, "",sep=""),sep="\n")
-}
 
 #
 #

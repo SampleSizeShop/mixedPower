@@ -151,25 +151,17 @@ hr {
 */</li>
 </ul>
 
-<p>PROC IML SYMSIZE=1000 WORKSIZE=2000;
-%INCLUDE &ldquo;calculatePowerKenwardRoger.sxs&rdquo;/NOSOURCE2;</p>
+<p>PROC IML SYMSIZE=1000 WORKSIZE=2000;</p>
 
-<p>Xessence = {</p>
+<p>%INCLUDE &ldquo;calculatePowerKenwardRoger.sxs&rdquo;/NOSOURCE2;</p>
 
-<pre><code>1 0 0 0,
-
-0 1 0 0,
-
-0 0 1 0,
-
-0 0 0 1,
-
+<pre><code>X = {
+     1 0 0 0,
+     0 1 0 0,
+     0 0 1 0,
+     0 0 0 1
+}
 </code></pre>
-
-<pre><code>character(0)
-</code></pre>
-
-<p>};</p>
 
 <p>X = Xessence@J(10,1,1);</p>
 

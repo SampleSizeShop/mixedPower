@@ -5,24 +5,22 @@
 * Date: 8/12/2013
 */
 
+
+
 PROC IML SYMSIZE=1000 WORKSIZE=2000;
+
 %INCLUDE "calculatePowerKenwardRoger.sxs"/NOSOURCE2;
 
-Xessence = {
 
 ```
-1 0 0 0,
-0 1 0 0,
-0 0 1 0,
-0 0 0 1,
-
+X = {
+	 1 0 0 0,
+	 0 1 0 0,
+	 0 0 1 0,
+	 0 0 0 1
+}
 ```
 
-```
-character(0)
-```
-
-};
 
 X = Xessence@J(10,1,1);
 

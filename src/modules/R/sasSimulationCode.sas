@@ -4,7 +4,7 @@
 * Author: Sarah Kreidler
 * Date: 8/12/2013
 */
-```{r setup, echo=FALSE}
+{r setup, echo=FALSE}
 matrixToIML <- function(name, m) {
   cat(name,"= {\n")
   rowCount = nrow(m)
@@ -16,16 +16,23 @@ matrixToIML <- function(name, m) {
   }
   cat("\n}\n")
 }
-```
 
 PROC IML SYMSIZE=1000 WORKSIZE=2000;
 
 %INCLUDE "calculatePowerKenwardRoger.sxs"/NOSOURCE2;
 
-```{r, echo=FALSE, comment=""}
-X=diag(4)
-matrixToIML("X",X)
+Xessence = {
+
 ```
+X = {
+	 1 0 0 0,
+	 0 1 0 0,
+	 0 0 1 0,
+	 0 0 0 1
+}
+```
+
+};
 
 X = Xessence@J(10,1,1);
 
