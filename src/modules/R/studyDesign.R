@@ -14,17 +14,27 @@ setClass ("mixedStudyDesign",
                            beta = "matrix",
                            Sigma = "matrix",
                            C = "matrix",
-                           thetaNull = "matrix"
+                           thetaNull = "matrix",
                            sascall = "character"
                            ),
-          prototype ( name ="",
-                      description ="",
-                      X = matrix(),
-                      beta = matrix(),
-                      Sigma = matrix(),
-                      C = matrix(),
-                      thetaNull = matrix(),
-                      sascall = ""
+          prototype ( name ="two sample t-test",
+                      description ="A design which tests for the difference of 
+                      means between two independent groups",
+                      X = diag(2),
+                      beta = matrix(c(1,0),nrow=2),
+                      Sigma = matrix(c(1)),
+                      C = matrix(c(1,-1), nrow=1),
+                      thetaNull = matrix(c(0)),
+                      sascall = "* define the mixed model fitting macro; 
+* this must contain a 'by setID' statement, but can otherwise;
+* be defined as needed by the model;
+%macro fitMixedModel(datasetName);
+  proc mixed data=&datasetName;
+		model y = A B / noint solution ddfm=KR;
+		by setID;
+		contrast \"treatment effect\" A 1 B -1;
+	run;
+%mend;"
           )
 )
 
@@ -64,11 +74,11 @@ setReplaceMethod("XMatrix", "mixedStudyDesign", function(object, value){
   object
 })
 
-setGeneric("BetaMatrix", function(object) standardGeneric("BetaMatrix"))
-setMethod("BetaMatrix", "mixedStudyDesign", function(object){return(object@Beta)})
-setGeneric("BetaMatrix<-", function(object, value) standardGeneric("BetaMatrix<-"))
-setReplaceMethod("BetaMatrix", "mixedStudyDesign", function(object, value){
-  object@Beta <- value
+setGeneric("betaMatrix", function(object) standardGeneric("betaMatrix"))
+setMethod("betaMatrix", "mixedStudyDesign", function(object){return(object@beta)})
+setGeneric("betaMatrix<-", function(object, value) standardGeneric("betaMatrix<-"))
+setReplaceMethod("betaMatrix", "mixedStudyDesign", function(object, value){
+  object@beta <- value
   validObject(object)
   object
 })
@@ -93,10 +103,10 @@ setReplaceMethod("contrast", "mixedStudyDesign", function(object, value){
 
 
 setGeneric("thetaNullMatrix", function(object) standardGeneric("thetaNullMatrix"))
-setMethod("thetaNullMatrix", "mixedStudyDesign", function(object){return(object@ThetaNull)})
+setMethod("thetaNullMatrix", "mixedStudyDesign", function(object){return(object@thetaNull)})
 setGeneric("thetaNullMatrix<-", function(object, value) standardGeneric("thetaNullMatrix<-"))
 setReplaceMethod("thetaNullMatrix", "mixedStudyDesign", function(object, value){
-  object@ThetaNull <- value
+  object@thetaNull <- value
   validObject(object)
   object
 })
@@ -106,7 +116,7 @@ setGeneric("sascall", function(object) standardGeneric("sascall"))
 setMethod("sascall", "mixedStudyDesign", function(object){return(object@sascall)})
 setGeneric("sascall<-", function(object, value) standardGeneric("sascall<-"))
 setReplaceMethod("sascall", "mixedStudyDesign", function(object, value){
-  object@ThetaNull <- value
+  object@sascall <- value
   validObject(object)
   object
 })

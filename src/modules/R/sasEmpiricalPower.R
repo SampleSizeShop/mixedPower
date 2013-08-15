@@ -6,8 +6,6 @@
 #
 #
 
-source("studyDesign.R")
-
 #
 # Generate an SAS/IML string representation of an R matrix
 #
@@ -15,7 +13,7 @@ matrixToIML <- function(name, m) {
   rowDataStr = paste(sapply(1:nrow(m),
                       function(i){paste("\t", paste(m[i,], collapse=" "), 
                                         ifelse(i<nrow(m),",",""))}),collapse="\n")
-  imlStr = paste(name, "= {\n", rowDataStr, "\n};\n")
+  imlStr = paste("\n",name, "= {\n", rowDataStr, "\n};\n\n")
   return(imlStr)
 }
 
@@ -35,113 +33,38 @@ generateSASCode.mixedSimulation = function(studyDesign, path) {
 *
 * SAS code for simulating a linear mixed model
 *
-* Date: ", format(Sys.time(), "%a %b-%d-%Y")`,
+* Date: " , format(Sys.time(), "%a %b-%d-%Y"),
 "\n* Study Design: ", name(studyDesign), 
 "\n* Description: ", description(studyDesign),                  
-"*/\n", sep="");
+"\n*/\n\n", sep="");
   
   # define the actual command to run the simulation
   command = paste("\n", sascall(studyDesign), "\n",
-"proc iml;
-  %INCLUDE \"simulateMixedModel.sxs\"/NOSOURCE2;
-	%INCLUDE \"calculatePowerKenwardRoger.sxs\"/NOSOURCE2;
-                  ",
+"\nproc iml;
+%INCLUDE \"simulateMixedModel.sxs\"/NOSOURCE2;\n\n",
 "call calculateEmpiricalPowerConditional(10000, 1000,  
-                  simlib, simprefix, \"sascall\",
-                  X, XFullColNames, XModelColNames, Beta, SigmaS,
+                  simlib, simprefix, \"mixedCall\",
+                  X, XModel, Beta, SigmaS,
                   empiricalPower);
-"                  
-    )
+",                  
+    sep="")
   
   # closing statements
-  footer = "\nQUIT;\n";
+  footer = "\nQUIT;\n\n";
   
   imlCode = paste(
     header,
-    matrixToXML(XMatrix(studyDesign)),
-    matrixToXML(BetaMatrix(studyDesign)),
-    matrixToXML(SigmaMatrix(studyDesign)),
-    matrixToXML(ThetaNull(studyDesign)),
-    matrixToXML(contrast(studyDesign)),
+    matrixToIML("X", XMatrix(studyDesign)),
+    matrixToIML("beta", betaMatrix(studyDesign)),
+    matrixToIML("Sigma", SigmaMatrix(studyDesign)),
+    matrixToIML("thetaNull", thetaNullMatrix(studyDesign)),
+    matrixToIML("C", contrast(studyDesign)),
     command,
-    footer
+    footer,
+    sep=""
     )
   return(imlCode);
   #write(imlCode, file=path)
-}
-  
-#   /*
-#     * Generated SAS code for simulating a linear mixed model
-#   *
-#     * Author: Sarah Kreidler
-#   * Date: 8/12/2013
-#   */
-#     ```{r setup, echo=FALSE}
-#   
-#   ```
-#   
-#   PROC IML SYMSIZE=1000 WORKSIZE=2000;
-#   
-#   %INCLUDE "calculatePowerKenwardRoger.sxs"/NOSOURCE2;
-#   
-#   ```{r, echo=FALSE, comment=""}
-#   X=diag(4)
-#   matrixToIML("X",X)
-#   ```
-#   
-#   X = Xessence@J(10,1,1);
-#   
-#   C = {1 -1};
-#   
-#   SigmaS = I(NROW(X));
-#   
-#   Beta = {
-#     1,
-#     0
-#   };
-#   
-#   thetaNull = {0};
-#   alpha = {0.05};
-#   
-#   print X;
-#   print sigmaS;
-#   print Beta;
-#   print C;
-#   
-#   do i = 0 to 3;
-#   power = power // calculatePowerKenwardRoger(X, i*Beta, C, SigmaS, thetaNull, alpha);
-#   end;
-#   print power;
-#   
-#   quit;
-#   
-#   
-#   /*
-#     *
-#     * POwerlib equivalent
-#   *
-#     */
-#     PROC IML SYMSIZE=1000 WORKSIZE=2000;
-#   %INCLUDE "C:\KeithMullerSoftware\power\Iml\POWERLIB21.IML" /NOSOURCE2;
-#   
-#   * Define inputs to power program;
-#   ALPHA = 0.05;
-#   SIGMA = {1};
-#   SIGSCAL = {1};
-#   
-#   ESSENCEX = I(2);
-#   REPN = { 10 };
-#   
-#   BETA = {1 0}`;
-#   BETASCAL = DO(0,3,1);
-#   C = {1 -1};
-#   
-#   OPT_OFF= {C U};
-#   ROUND = 15;
-#   RUN POWER;
-#   
-#   QUIT;
-  
 }
 
 #
@@ -163,83 +86,13 @@ generateSASCode.mixedSimulation = function(studyDesign, path) {
 # throws:
 # simpleError on failure
 #
-calculateEmpiricalPower <- function(studyDesign, 
+calculateEmpiricalPower.mixed <- function(studyDesign, 
                                     outputDatasetName="empiricalPower") {
-  sascode = generateSASCode(studyDesign, outputDatasetName)
-  cat(sascode,file=paste(OUTPUT_DATA_DIR,"gen-",studyDesig$id, "",sep=""),sep="\n")
+  filename = paste("generated_", gsub(" ", "", name(studyDesign)), ".sas", sep="")
+  sascode = generateSASCode.mixedSimulation(studyDesign, paste(GEN_DIR,filename,sep="/"))
+  # TODO: exec call to SAS
+  # load data result
+  # return empirical power value
+  # TODO: handle iterations - maybe options object?
 }
 
-setClass ("studyDesign",
-          representation ( id = "character",
-                           description = "character",
-                           X = "matrix",
-                           B = "matrix",
-                           Sigma = "matrix",
-                           C = "matrix",
-                           U = "matrix",
-                           ThetaNull = "matrix"
-                           ),
-          prototype ( id ="generic Two-sample T-test",
-                      description ="A two group study design",
-                      X = diag(2),
-                      B = as.matrix(c(1,0),nrow=2),
-                      Sigma = diag(1),
-                      C = as.matrix(c(1,-1), nrow=1),
-                      U = diag(1),
-                      ThetaNull = as.matrix(c(0)))
-          )
-
-setMethod("id", "studyDesign",function)
-
-
-
-
-function (generic, signature, file, external = FALSE, where = topenv(parent.frame())) 
-{
-  fdef <- getGeneric(generic, where = where)
-  if (is.null(fdef)) {
-    fdef <- implicitGeneric(generic, where = where)
-    if (is.null(fdef)) 
-      stop(gettextf("No function definition found for %s", 
-                    sQuote(generic)), domain = NA)
-  }
-  else {
-    generic <- fdef@generic
-  }
-  signature <- matchSignature(signature, fdef)
-  if (length(signature) == 0) 
-    signature <- "ANY"
-  sigNames <- fdef@signature
-  length(sigNames) <- length(signature)
-  method <- function() {
-  }
-  formals(method) <- formals(fdef)
-  body(method) <- quote({
-    stop("Need a definition for the method here")
-  })
-  methodName <- paste(c(generic, signature), collapse = "_")
-  if (missing(file)) 
-    file <- paste0(methodName, ".R")
-  output <- c(paste0("setMethod(\"", generic, "\","), paste0("    signature(", 
-                                                             paste0(sigNames, " = \"", signature, "\"", collapse = ", "), 
-                                                             "),"))
-  method <- deparse(method)
-  if (identical(external, FALSE)) 
-    output <- c(output, paste0("    ", method), ")")
-  else {
-    if (is(external, "character")) 
-      methodName <- toString(external)
-    method[[1L]] <- paste0("`", methodName, "` <- ", method[[1L]])
-    output <- c(method, "", output, paste0("  `", methodName, 
-                                           "`)"))
-  }
-  writeLines(output, file)
-  message("Skeleton of method written to ", if (is.character(file)) 
-    file
-          else "connection")
-  invisible(file)
-}
-
-
-              
-test = new("studyDesign")
