@@ -12,6 +12,51 @@
 #
 library(magic)
 
+#
+# Returns lambda, omega, and ddf for the distribution
+# of the Kenward-Roger statistic
+#
+getKRParams = function(a, waldMeanNull, waldMeanAlt, waldVarAlt) {
+  # calculate rho
+  rho = waldVarAlt / (2*waldMeanNull^2) 
+  # calculate noncentrality parameter
+  omega = a*((waldMeanAlt/waldMeanNull)-1)
+  # denominator degrees of freedom
+  ddf = 4 + (2*(a + 2*omega) + (a + omega)^2)/(rho*a^2 - a - 2*omega)
+  # scale factor for KR adjustment
+  lambda = ddf / ((ddf - 2)*waldMeanNull)
+  
+  return(lambda, ddf, omega)
+}
+
+#
+# Calculate power for the KR test of fixed effects
+# in the mixed model
+#
+mixedPower = function() {
+  
+  # get the approximate moments of the Wald statistic
+  moments = getWaldMoments()
+  
+  # calculate the parameters of the KR statistic
+  params = getKRParams(a, moments$muNull, moments$muAlt, moments$varAlt)
+  
+  # get Wald statistic
+  wald
+  
+  # get the critical F
+  Fcrit = qf(1-alpha,a,params$ddf)
+  
+  # scale it down by lambda
+  Fcrit = params$lambda * Fcrit
+  
+  # calculate power;
+  power = 1 - pf(Fcrit, a, params$ddf, params$omega);
+  
+  
+  
+}
+
 test = data.frame(treatment=c(1,1,1,2,2,2))
 test$N = c(5,5,12,13,4,5) 
 test$observations = list(c(1), c(2), c(1,2,3), c(1,2), c(1,2,3), c(1))
