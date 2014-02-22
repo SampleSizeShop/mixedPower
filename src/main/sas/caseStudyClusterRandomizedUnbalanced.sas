@@ -44,6 +44,7 @@ XModelColNames = {"A" "B" };
 mattrib X colname=XFullColNames; 
 Xmodel = X[,XModelColNames];
 
+print X;
 Beta = {1,0};
 
 SigmaSmall = 2#(J(5,5,1)*0.3+I(5)*0.7);

@@ -12,6 +12,77 @@
 #
 library(magic)
 
+setClass(
+  "missingDataPattern",
+  representation (
+    group = "numeric",
+    observations = "numeric",
+    size = "numeric"
+    ),
+  prototype (
+    group = 1,
+    observations = c(1),
+    size = 10
+    )  
+  ) 
+  
+
+setClass (
+  "design.mixed",
+  representation ( name = "character",
+                   description = "character",
+                   xPatternList = "list",
+                   Beta = "matrix",
+                   SigmaError = "matrix"
+  ),
+  prototype ( name ="",
+              description ="",
+              xPatternList = c(
+                new("missingDataPattern", group=1, observations=c(1), size=10),
+                new("missingDataPattern", group=2, observations=c(1), size=10)                
+                ),
+              Beta = matrix(c(1,0),nrow=2),
+              SigmaError = matrix(c(1))
+  ),
+  validity = function(object) {
+    # TODO
+    
+    return(TRUE)
+  }
+)
+
+#
+# glh
+#
+# Class describing the general linear hypothesis
+#
+setClass (
+  "glh.mixed",
+  representation ( alpha = "numeric",
+                   fixedContrast = "matrix",
+                   thetaNull = "matrix",
+                   test = "character"
+  ),
+  prototype ( alpha = 0.05,
+              fixedContrast = matrix(c(1,-1), nrow=1),
+              thetaNull = matrix(c(0)),
+              test = "Wald, KR ddf"
+  ),
+  validity = function(object) {
+    # make sure thetaNull conforms with the between and within contrasts
+    if (nrow(object@betweenContrast) != nrow(object@thetaNull)) {
+      stop("The number of rows in the between contrast must match the number of rows of thetaNull")
+    }
+    if (ncol(object@thetaNull) > 1) {
+      stop("theta null must be a vector")
+    }
+    
+    return(TRUE)
+  }
+)
+
+
+
 #
 # Returns lambda, omega, and ddf for the distribution
 # of the Kenward-Roger statistic
@@ -33,10 +104,10 @@ getKRParams = function(a, waldMeanNull, waldMeanAlt, waldVarAlt) {
 # Calculate power for the KR test of fixed effects
 # in the mixed model
 #
-mixedPower = function() {
+mixedPower = function(design, glh) {
   
   # get the approximate moments of the Wald statistic
-  moments = getWaldMoments()
+  moments = getWaldMoments(design, glh)
   
   # calculate the parameters of the KR statistic
   params = getKRParams(a, moments$muNull, moments$muAlt, moments$varAlt)
