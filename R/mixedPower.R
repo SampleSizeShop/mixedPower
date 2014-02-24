@@ -11,7 +11,13 @@
 #
 #
 library(magic)
+library(invWishartSum)
 
+#
+# Class which describes a specific data pattern
+# (either complete or with missing observations)
+# for a mixed model design
+#
 setClass(
   "missingDataPattern",
   representation (
@@ -26,26 +32,31 @@ setClass(
     )  
   ) 
   
-
+#
+# Mixed model design for use in power analysis
+#
 setClass (
   "design.mixed",
   representation ( name = "character",
                    description = "character",
                    xPatternList = "list",
                    Beta = "matrix",
-                   SigmaError = "matrix"
+                   Sigma = "matrix"
   ),
   prototype ( name ="",
               description ="",
               xPatternList = c(
-                new("missingDataPattern", group=1, observations=c(1), size=10),
-                new("missingDataPattern", group=2, observations=c(1), size=10)                
+                new("missingDataPattern", group=1, observations=c(1,2,3), size=10),
+                new("missingDataPattern", group=1, observations=c(1,2), size=10),
+                new("missingDataPattern", group=2, observations=c(1,2,3), size=10),
+                new("missingDataPattern", group=2, observations=c(1,2), size=5)   
                 ),
               Beta = matrix(c(1,0),nrow=2),
-              SigmaError = matrix(c(1))
+              Sigma = matrix(c(1,0.3,0.3,0.3,1,0.3,0.3,0.3,1), nrow=3)
   ),
   validity = function(object) {
-    # TODO
+    # TODO - check max observations. make sure no one has more listed
+    # also make sure all observations are in range
     
     return(TRUE)
   }
@@ -55,6 +66,7 @@ setClass (
 # glh
 #
 # Class describing the general linear hypothesis
+# for fixed effects in the mixed model
 #
 setClass (
   "glh.mixed",
@@ -64,7 +76,7 @@ setClass (
                    test = "character"
   ),
   prototype ( alpha = 0.05,
-              fixedContrast = matrix(c(1,-1), nrow=1),
+              fixedContrast = matrix(c(1/3,1/3,1/3,-1/3,-1/3,-1/3), nrow=1),
               thetaNull = matrix(c(0)),
               test = "Wald, KR ddf"
   ),
@@ -97,7 +109,82 @@ getKRParams = function(a, waldMeanNull, waldMeanAlt, waldVarAlt) {
   # scale factor for KR adjustment
   lambda = ddf / ((ddf - 2)*waldMeanNull)
   
-  return(lambda, ddf, omega)
+  return(data.frame(lambda=lambda, ddf=ddf, omega=omega))
+}
+
+#
+# Get the approximate moments of the Wald
+# statistic given the mixed model design
+#
+#
+getWaldMoments = function(design, glh) {
+  
+  # determine the number of unique treatment groups
+  numGroups = length(unique(sapply(design@xPatternList, function(x) {
+    return(x@group)
+  })))
+  
+  # get the max number of planned observations 
+  maxObs = nrow(design@Sigma)
+  
+  # calculate the approximate distribution of the stacked Sigma matrix
+  # by estimating the distribution of the sum of quadratic 
+  # forms in inverse Wishart matrices
+  # 
+  # first, build the list of Wisharts and corresponding design matrices
+  invWishartList = list()
+  designMatrixList = list()
+  for(i in 1:length(design@xPatternList)) {
+    pattern = design@xPatternList[[i]]
+    # get the within participant design
+    designWithin = diag(maxObs)[pattern@observations,]
+    
+    # build the design matrix - kronecker
+    designMatrixList[[i]] = matrix(diag(numGroups)[pattern@group,], nrow=1) %x% designWithin
+    
+    # build the corresponding Wisharts
+    wishart = new("wishart", df=pattern@size, 
+                  covariance=designWithin %*% design@Sigma %*% t(designWithin) )
+    invWishartList[[i]] = invert(wishart)
+  }
+  class(invWishartList) = "inverseWishart"
+  
+  # calculate the approximating inverse Wishart for X' * SigmaInv * X
+  distXtSigmaInvX = approximateInverseWishart(invWishartList, 
+                                               designMatrixList,
+                                               method="trace")
+  # now invert to get a Wishart
+  distXtSigmaInvXInv = invert(distXtSigmaInvX)
+  # scale by C matrices and form corresponding wishart
+  distCXtSigmaInvXInvCt = new("wishart", df=distXtSigmaInvXInv@df,
+                              covariance=(glh@fixedContrast %*% 
+                                            distXtSigmaInvXInv@covariance %*% 
+                                            t(glh@fixedContrast))) 
+  
+  # calculate the approximate distribution of C*Beta - thetaNull
+  
+
+  
+  
+
+  # Form the parameters of the approximate F
+  #
+  ndf = nrow(glh@fixedContrast)
+  ddf = 16  
+  omega=5
+
+  # Calculate the moments of the F under the null 
+  mu.null = ddf / (ddf - 2)
+  var.null = (2 * ddf^2 * (ndf + ddf - 2)) / (ndf * (ddf - 2)^2 * (ddf - 4))
+  # Calculate the moments of the F under the alternative
+  mu.alt = (ddf * (ndf + omega)) / (ndf * (ddf - 2))
+  var.alt = (2 * (ddf / ndf)^2 * 
+               ((ndf + omega)^2 + (ndf + 2 * omega) * (ddf - 2)) / 
+               ((ddf - 2)^2 * (ddf - 4)))
+    
+    
+  
+  return(data.frame(mu.null=mu.null, var.null=var.null, muAlt=muAlt, varAlt=varAlt))
 }
 
 #
@@ -124,7 +211,7 @@ mixedPower = function(design, glh) {
   # calculate power;
   power = 1 - pf(Fcrit, a, params$ddf, params$omega);
   
-  
+  return(power)
   
 }
 
