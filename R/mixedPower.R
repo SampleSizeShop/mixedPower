@@ -40,7 +40,7 @@ setClass (
   representation ( name = "character",
                    description = "character",
                    xPatternList = "list",
-                   Beta = "matrix",
+                   beta = "matrix",
                    Sigma = "matrix"
   ),
   prototype ( name ="",
@@ -51,7 +51,7 @@ setClass (
                 new("missingDataPattern", group=2, observations=c(1,2,3), size=10),
                 new("missingDataPattern", group=2, observations=c(1,2), size=5)   
                 ),
-              Beta = matrix(c(1,0),nrow=2),
+              beta = matrix(c(1,1,1,0,0,0),ncol=1),
               Sigma = matrix(c(1,0.3,0.3,0.3,1,0.3,0.3,0.3,1), nrow=3)
   ),
   validity = function(object) {
@@ -117,7 +117,7 @@ getKRParams = function(a, waldMeanNull, waldMeanAlt, waldVarAlt) {
 # statistic given the mixed model design
 #
 #
-getWaldMoments = function(design, glh) {
+getWaldMoments = function(design, glh, homoscedastic) {
   
   # determine the number of unique treatment groups
   numGroups = length(unique(sapply(design@xPatternList, function(x) {
@@ -127,6 +127,19 @@ getWaldMoments = function(design, glh) {
   # get the max number of planned observations 
   maxObs = nrow(design@Sigma)
   
+  # build the weight matrix for C*beta-thetaNull.  We weight by the
+  # number of deletion classes containing the ith element of beta
+  weightMatrix = diag(unlist(lapply(1:numGroups, function(group) {
+    groupPatterns = Filter(function(x) { x@group==group }, design@xPatternList)
+    return(sapply(1:maxObs, function(obs, groupPatterns) {
+      return(1/sum(sapply(groupPatterns, 
+                          function(pattern, obs) {
+        return(as.numeric(obs %in% pattern@observations))
+      }, obs)))
+    }, groupPatterns))
+  })))
+
+  
   # calculate the approximate distribution of the stacked Sigma matrix
   # by estimating the distribution of the sum of quadratic 
   # forms in inverse Wishart matrices
@@ -134,18 +147,36 @@ getWaldMoments = function(design, glh) {
   # first, build the list of Wisharts and corresponding design matrices
   invWishartList = list()
   designMatrixList = list()
+  betaCovarSum = matrix(rep(0, (numGroups*maxObs)^2), nrow=(numGroups*maxObs))
   for(i in 1:length(design@xPatternList)) {
     pattern = design@xPatternList[[i]]
-    # get the within participant design
+    # get the between/within portions of the design
+    designBetween = matrix(diag(numGroups)[pattern@group,], nrow=1)
     designWithin = diag(maxObs)[pattern@observations,]
     
+    # calculate Sigma for the deletion class
+    SigmaD = designWithin %*% design@Sigma %*% t(designWithin)
+    
+    ##
+    ## Setup the inputs to calculate the approximate Wishart for
+    ## the middle term of the Wald statistic
+    ##
     # build the design matrix - kronecker
-    designMatrixList[[i]] = matrix(diag(numGroups)[pattern@group,], nrow=1) %x% designWithin
+    designMatrixList[[i]] = designBetween %x% designWithin
     
     # build the corresponding Wisharts
-    wishart = new("wishart", df=pattern@size, 
-                  covariance=designWithin %*% design@Sigma %*% t(designWithin) )
+    wishart = new("wishart", df=pattern@size, covariance=SigmaD )
     invWishartList[[i]] = invert(wishart)
+    
+    ##
+    ## add in the next term for the beta covariance
+    ##
+    betaCovarSum = (betaCovarSum + 
+                   ((1/pattern@size) * 
+                      (t(designWithin) %*% SigmaD %*% designWithin) %x%
+                      (t(designBetween) %*% designBetween)
+                    ))
+    
   }
   class(invWishartList) = "inverseWishart"
   
@@ -161,10 +192,14 @@ getWaldMoments = function(design, glh) {
                                             distXtSigmaInvXInv@covariance %*% 
                                             t(glh@fixedContrast))) 
   
-  # calculate the approximate distribution of C*Beta - thetaNull
-  
+  # calculate the approximate covariance of thetaDiff = C*beta-thetaNull
+  thetaDiffCovar = (glh@fixedContrast %*% weightMatrix %*% 
+                      betaCovarSum %*% weightMatrix %*% t(glh@fixedContrast))
+  # calculate the mean
+  thetaDiffMu = glh@fixedContrast %*% design@beta - glh@thetaNull
+                    
 
-  
+  thetaDiff
   
 
   # Form the parameters of the approximate F
@@ -191,10 +226,10 @@ getWaldMoments = function(design, glh) {
 # Calculate power for the KR test of fixed effects
 # in the mixed model
 #
-mixedPower = function(design, glh) {
+mixedPower = function(design, glh, homoscedastic=TRUE) {
   
   # get the approximate moments of the Wald statistic
-  moments = getWaldMoments(design, glh)
+  moments = getWaldMoments(design, glh, homoscedastic)
   
   # calculate the parameters of the KR statistic
   params = getKRParams(a, moments$muNull, moments$muAlt, moments$varAlt)
