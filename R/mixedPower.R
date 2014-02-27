@@ -193,13 +193,16 @@ getWaldMoments = function(design, glh, homoscedastic) {
                                             t(glh@fixedContrast))) 
   
   # calculate the approximate covariance of thetaDiff = C*beta-thetaNull
-  thetaDiffCovar = (glh@fixedContrast %*% weightMatrix %*% 
+  Sigma.thetaDiffHat = (glh@fixedContrast %*% weightMatrix %*% 
                       betaCovarSum %*% weightMatrix %*% t(glh@fixedContrast))
   # calculate the mean
-  thetaDiffMu = glh@fixedContrast %*% design@beta - glh@thetaNull
+  mu.thetaDiffHat = glh@fixedContrast %*% design@beta - glh@thetaNull
                     
 
   thetaDiff
+  
+  
+  
   
 
   # Form the parameters of the approximate F
