@@ -1,0 +1,3 @@
+# ignore SAS simulation data sets
+*.sas7bdat
+
