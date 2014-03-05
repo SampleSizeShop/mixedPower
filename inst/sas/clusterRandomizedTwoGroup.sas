@@ -1,12 +1,11 @@
 /*
 *
-* Case Study 5: Unalanced data with 5:10:10:5:5 outcomes
-* per independent sampling unit.
+* Cluster randomized designs with two treatments
 *
-* Fixed imbalance
-*
-*
-*
+* We vary the following parameters
+*  per group N: 10, 40
+*  cluster size: 5, 50, 500
+*  missing percent (in 50% of ISUs): 0%, 10%, 20%, 40%
 */
 
 %include "common.sas";
@@ -14,12 +13,12 @@
 * define the mixed model fitting macro; 
 * this must contain a 'by setID' statement, but can otherwise;
 * be defined as needed by the model;
-%macro fitMixedModelShort(datasetName);
+%macro clustered2Group(datasetName);
 	proc mixed data=&datasetName;
-		model y = A B / noint solution;
+		model y = trt1 trt2 / noint solution ddfm=kr;
 		random int / subject=clusterID;
 		by setID;
-		contrast "trt" A 1 B -1;
+		contrast "2 group main effect" trt1 1 trt2 -1;
 	run;
 %mend;
 

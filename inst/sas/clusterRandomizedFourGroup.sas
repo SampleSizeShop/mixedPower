@@ -1,12 +1,11 @@
 /*
 *
-* Case Study 5: Unalanced data with 5:10:10:5:5 outcomes
-* per independent sampling unit.
+* Cluster randomized designs with four treatments
 *
-* Fixed imbalance
-*
-*
-*
+* We vary the following parameters
+*  per group N: 10, 40
+*  cluster size: 5, 50, 500
+*  missing percent (in 50% of ISUs): 0%, 10%, 20%, 40%
 */
 
 %include "common.sas";
@@ -14,62 +13,110 @@
 * define the mixed model fitting macro; 
 * this must contain a 'by setID' statement, but can otherwise;
 * be defined as needed by the model;
-%macro fitMixedModelShort(datasetName);
+* define the mixed model fitting macro; 
+* this must contain a 'by setID' statement, but can otherwise;
+* be defined as needed by the model;
+%macro clustered4Group(datasetName);
 	proc mixed data=&datasetName;
-		model y = A B / noint solution ddfm=KR;
+		model y = trt1 trt2 trt3 trt4 / noint solution;
 		random int / subject=clusterID;
 		by setID;
-		contrast "trt" A 1 B -1;
+		contrast "4 group main effect" 
+			trt1 1 trt2 -1,
+			trt1 1 trt3 -1,
+			trt1 1 trt4 -1;
 	run;
 %mend;
 
 /*
-* Generate the data sets
+* Calculate empirical power for the 4 group, cluster randomized trials
 */
 proc iml;
 	%INCLUDE "&MODULES_DIR\simulateMixedModel.sxs"/NOSOURCE2;
 	%INCLUDE "&MODULES_DIR\calculatePowerKenwardRoger.sxs"/NOSOURCE2;
-Xessence = {
-	1 0 ,
-	0 1
-};
 
-X = Xessence@J(35,1,1);
-ISU = J(5,1,1) // J(10,1,2) // J(10,1,3) // J(5,1,4) // J(5,1,5) //
-		J(5,1,6) // J(10,1,7) // J(10,1,8) // J(5,1,9) // J(5,1,10);
+	* wrapper function to generate appropriate X and Sigma;
+	start clusterEmpiricalPower(perGroupN, clusterSize, deletePercent, empiricalPower);
+		* cell means essence matrix;
+		Xessence = I(4);
+		XFullColNames={"clusterId" "trt1" "trt2" "trt3" "trt4"}; 
+		XModelColNames = {"trt1" "trt2" "trt3" "trt4"};
+		* calculate the number of complete cases;
+		numComplete = perGroupN / 2;
+		numIncomplete = perGroupN - numComplete;
+		* calculate the size of complete and incomplete cases;
+		incompleteSize = floor(clusterSize*(1-deletePercent));
+		* build the X matrix;
+		totalObsPerGroup = numComplete*clusterSize + numIncomplete*incompleteSize;
+		X = Xessence@J(totalObsPerGroup,1,1);
+		* build the cluster id's;
+		do grp=1 to 4;
+			do isu=1 to perGroupN by 2;
+			    id = (grp-1)*perGroupN + isu;
+				idList = idList // J(clusterSize,1,id) //
+					J(incompleteSize,1,id + 1);
+			end;
+		end;
+		X = idList || X ;
+		*print X;
 
-X = ISU || X ;
-XFullColNames={"clusterId" "A" "B"}; 
-XModelColNames = {"A" "B" };
-mattrib X colname=XFullColNames; 
-Xmodel = X[,XModelColNames];
+		* define beta;
+		Beta = {1,0,0,0};
+		SigmaComplete = 2#(J(clusterSize,clusterSize,1)*0.04+I(clusterSize)*0.96);
+		SigmaIncomplete = 2#(J(incompleteSize,incompleteSize,1)*0.04+I(incompleteSize)*0.96);
+		SigmaS = I((perGroupN/2)*4) @ block(SigmaComplete, SigmaIncomplete);
+		*print SigmaS;
+		
+		simlib= "outData";
+		simprefix = "crT4N" + strip(char(perGroupN)) + 
+				"C" + strip(char(clusterSize)) + "D" + strip(char(deletePercent));
 
-print X;
-Beta = {1,0};
+		call calculateEmpiricalPowerConditional(10000, 1000,  
+		  simlib, simprefix, "clustered4Group",
+		  X, XFullColNames, XModelColNames, Beta, SigmaS,
+		  empiricalPower);
 
-SigmaSmall = 2#(J(5,5,1)*0.3+I(5)*0.7);
-SigmaBig = 2#(J(10,10,1)*0.3+I(10)*0.7);
-SigmaS = block(SigmaSmall,SigmaBig,SigmaBig,SigmaSmall,SigmaSmall,
-				SigmaSmall,SigmaBig,SigmaBig,SigmaSmall,SigmaSmall);
-print SigmaS;
-C = {1 -1};
-thetaNull = {0};
-alpha = {0.05};
-simlib= "outData";
-simprefix = "simCaseStudy05";
 
-call calculateEmpiricalPowerConditional(10000, 1000,  
-  simlib, simprefix, "fitMixedModelShort",
-  X, XFullColNames, XModelColNames, Beta, SigmaS,
-  powerResults);
+		free X;
+		free SigmaS;
+	finish;
 
-* now call the approximation;
-power = calculatePowerKenwardRoger(Xmodel, Beta, C, SigmaS, thetaNull, alpha, 10);
-print power;
-print powerResults;
+	* parameters to vary;
+	* number of clusters in each treatment group;
+	perGroupNList = {10};* 40};
+	* cluster size for complete case;
+	clusterSizeList = {5};* 50 100 500};
+	* delete percent for incomplete cases;
+	deletePercentList = {0};* 0.1 0.2 0.4};
+
+	* run the cases ;
+	caseCounter = 1;
+	do perGroupNIdx=1 to NCOL(perGroupNList);
+		do clusterSizeIdx=1 to NCOL(clusterSizeList);
+			do deletePercentIdx=1 to NCOL(deletePercentList);
+				print ("Case: " + strip(char(caseCounter)));
+				call clusterEmpiricalPower(perGroupNList[perGroupNIdx], 
+									clusterSizeList[clusterSizeIdx], 
+									deletePercentList[deletePercentIdx],
+									empiricalPower);
+									print(empiricalPower);
+				empiricalPowerResults = empiricalPowerResults // 
+					(perGroupN || clusterSize || deletePercent || empiricalPower);
+				caseCounter = caseCounter + 1;
+			end;
+		end;
+	end;
+	
+	* write power results to a data set;
+	create clusterFourGroupEmpirical from 
+		empiricalPowerResults[colname={"perGroupN" "clusterSize" "deletePercent" "empiricalPower"}];
+	append from empiricalPowerResults;
+	close clusterFourGroupEmpirical;
 quit;
 
-
-
-
-
+* write the temporary empirical power data set to disk as a csv;
+proc export data=clusterFourGroupEmpirical
+   outfile='&OUTDATA\clusterFourGroupEmpirical.csv'
+   dbms=csv
+   replace;
+run;
