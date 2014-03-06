@@ -13,7 +13,7 @@
 * define the mixed model fitting macro for 4 group design; 
 %macro clustered4Group(datasetName);
 	proc mixed data=&datasetName;
-		model y = trt1 trt2 trt3 trt4 / noint solution;
+		model y = trt1 trt2 trt3 trt4 / noint solution ddfm=kr;
 		random int / subject=clusterID;
 		by setID;
 		contrast "4 group main effect" 
@@ -26,7 +26,7 @@
 * define the mixed model fitting macro for 2 group design; 
 %macro clustered2Group(datasetName);
 	proc mixed data=&datasetName;
-		model y = trt1 trt2 / noint solution;
+		model y = trt1 trt2 / noint solution ddfm=kr;
 		random int / subject=clusterID;
 		by setID;
 		contrast "2 group main effect" trt1 1 trt2 -1;
@@ -41,9 +41,10 @@ proc import datafile="&OUT_DATA_DIR\clusterRandomizedParams.csv"
      getnames=yes;
 run;
 
-/*data clusterRandomizedParams;
-	set clusterRandomizedParams(obs=3);
-run;*/
+data clusterRandomizedParams;
+	set clusterRandomizedParams;
+	where clusterSize = 5 and perGroupN = 40;
+run;
 /*
 * Calculate empirical power for the 4 group, cluster randomized trials
 */
@@ -100,7 +101,9 @@ proc iml;
 		simlib= "outData";
 		simprefix = "clusterExamples";
 
-		call calculateEmpiricalPowerConditional(10000, 1000,  
+		blockSize = 200;
+		*if clusterSize > 50 then blockSize = 100;
+		call calculateEmpiricalPowerConditional(10000, blockSize,  
 		  simlib, simprefix, macroName,
 		  X, XFullColNames, XModelColNames, Beta, SigmaS,
 		  empiricalPower);
