@@ -41,11 +41,9 @@ proc import datafile="&OUT_DATA_DIR\clusterRandomizedParams.csv"
      getnames=yes;
 run;
 
-
-data clusterRandomizedParams;
+/*data clusterRandomizedParams;
 	set clusterRandomizedParams(obs=3);
-run;
-
+run;*/
 /*
 * Calculate empirical power for the 4 group, cluster randomized trials
 */
@@ -55,7 +53,7 @@ proc iml;
 
 	* wrapper function to generate appropriate X and Sigma;
 	start clusterEmpiricalPower(numGroups, perGroupN, clusterSize, 
-								deletePercent, sigmaSq, icc,
+								deletePercent, sigmaSq, icc, betaScale,
 								empiricalPower);
 		* cell means essence matrix;
 		Xessence = I(numGroups);
@@ -64,14 +62,14 @@ proc iml;
 			XFullColNames={"clusterId" "trt1" "trt2"}; 
 			XModelColNames = {"trt1" "trt2"};
 			* define beta;
-			Beta = {1,0};
+			Beta = betaScale*{1,0};
 			macroName = "clustered2Group";
 		end;
 		else do;
 			XFullColNames={"clusterId" "trt1" "trt2" "trt3" "trt4"}; 
 			XModelColNames = {"trt1" "trt2" "trt3" "trt4"};
 			* define beta;
-			Beta = {1,0,0,0};
+			Beta = betaScale*{1,0,0,0};
 			macroName = "clustered4Group";
 		end;
 
@@ -126,6 +124,7 @@ proc iml;
 							paramList[i,"missingPercent"], 
 							paramList[i,"sigmaSq"], 
 							paramList[i,"icc"],
+							paramList[i,"betaScale"],
 							empiricalPower);
 		empiricalPowerResults = empiricalPowerResults // empiricalPower;
 	end;
@@ -143,8 +142,8 @@ proc iml;
 quit;
 
 * write the temporary empirical power data set to disk as a csv;
-proc export data=clusterFourGroupEmpirical
-   outfile='&OUTDATA\clusterFourGroupEmpirical.csv'
+proc export data=clusterRandomizedEmpirical
+   outfile="&OUT_DATA_DIR\clusterRandomizedEmpirical.csv"
    dbms=csv
    replace;
 run;
