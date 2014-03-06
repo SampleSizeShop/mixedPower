@@ -18,8 +18,8 @@
 #
 
 #
-# Example power calculations for cluster randomized trials
-# with 4 treatments
+# Example power calculations for longitudinal designs
+# 
 #
 source("../R/mixedPower.R")
 
@@ -29,6 +29,26 @@ source("../R/mixedPower.R")
 #
 dataFile = function(filename) {
   return(paste(c("../data/", filename), collapse=""))
+}
+
+#
+# Calculate a lear correlation matrix of the specified
+# size, correlation, and decay rate
+# Assume equal spacing
+#
+learMatrix = function(size, rho, delta) {
+  dmin=1
+  dmax=size-1
+  lear = diag(size)
+  for(r in 1:(size-1)) {
+    for(c in (r+1):size) {
+      cat(r,c,"\n")
+      value = rho^(dmin + delta*((c-r-dmin)/(dmax-dmin)))
+      lear[r,c] = value
+      lear[c,r] = value
+    }
+  }
+  return(lear)
 }
 
 #
@@ -43,11 +63,14 @@ getBetaScaleByPower <- function(design, glh, targetPower=0.90, lower=0, upper=10
   return(betaScale$root)
 }
 
-getGlhByNumGroups = function(numGroups) {
+getGlh = function(numGroups, maxObs) {
+  betweenContrast = cbind(matrix(rep(1,numGroups-1)), -1*diag(numGroups-1))
+  withinContrast = cbind(matrix(rep(1,maxObs-1)), -1*diag(maxObs-1))
+  fixedContrast = betweenContrast %x% withinContrast
   return (new("glh.mixed",
               alpha = 0.05,
-              fixedContrast = cbind(matrix(rep(1,numGroups-1)), -1*diag(numGroups-1)),
-              thetaNull = matrix(rep(0,numGroups-1)),
+              fixedContrast = fixedContrast,
+              thetaNull = matrix(rep(0,nrow(fixedContrast)), nrow=nrow(fixedContrast)),
               test = "Wald, KR ddf"))
 }
 
@@ -59,8 +82,8 @@ generateLongitudinalDesign = function(params) {
   name = "longitudinal"
   description = paste(c(params$numGroups, " group longitudinal design, test of time by treatment interaction. ",
                         "Per group N = ", params$perGroupN, 
-                        ", cluster size = ", params$clusterSize,
-                        ", missing % (in half of ISUs) = ", params$missingPercent,
+                        ", max observations = ", params$maxObservations,
+                        ", monotone missing (in half of ISUs) = ", params$monotone,
                         ", target power = ", params$targetPower), collapse="")
   incompleteSize = floor(params$clusterSize * (1-params$missingPercent))
   
@@ -109,9 +132,9 @@ generateDesigns.longitudinal = function() {
   # total clusters per treatment group
   perGroupNList = c(10, 40)
   # total participants per cluster
-  numObservations = c(3, 5, 10)
-  # percent missing (in half of the clusters)
-  monotone = c(1, 0)
+  maxObservationsList = c(3, 5, 10)
+  # missing data pattern (either monotone or non-monotone)
+  monotoneList = c(1, 0)
   # in all cases, we select the scale factor 
   # for beta to achieve the following power
   targetPowerList = c(0.2, 0.5, 0.8)
@@ -122,8 +145,8 @@ generateDesigns.longitudinal = function() {
   sigmaSqList = c(2)
   
   # generate parameters
-  paramList = list(missingPercent=missingPercentList, 
-                   clusterSize=clusterSizeList,
+  paramList = list(monotone=monotoneList, 
+                   maxObservations=maxObservationsList,
                    perGroupN=perGroupNList, 
                    targetPower=targetPowerList,
                    rho=rhoList,
