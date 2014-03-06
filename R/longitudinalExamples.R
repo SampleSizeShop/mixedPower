@@ -42,7 +42,6 @@ learMatrix = function(size, rho, delta) {
   lear = diag(size)
   for(r in 1:(size-1)) {
     for(c in (r+1):size) {
-      cat(r,c,"\n")
       value = rho^(dmin + delta*((c-r-dmin)/(dmax-dmin)))
       lear[r,c] = value
       lear[c,r] = value
@@ -55,7 +54,7 @@ learMatrix = function(size, rho, delta) {
 # Identify the beta scale such that mixedPower returns the 
 # requested target power
 #
-getBetaScaleByPower <- function(design, glh, targetPower=0.90, lower=0, upper=1000) {
+getBetaScaleByPower <- function(design, glh, targetPower=0.90, lower=0.0001, upper=1000) {
   betaScale = uniroot(function(x) {
     design@beta = design@beta * x
     return(mixedPower(design, glh) - targetPower)
@@ -63,6 +62,9 @@ getBetaScaleByPower <- function(design, glh, targetPower=0.90, lower=0, upper=10
   return(betaScale$root)
 }
 
+#
+# Get time by treatment interaction hypothesis object
+#
 getGlh = function(numGroups, maxObs) {
   betweenContrast = cbind(matrix(rep(1,numGroups-1)), -1*diag(numGroups-1))
   withinContrast = cbind(matrix(rep(1,maxObs-1)), -1*diag(maxObs-1))
@@ -74,6 +76,8 @@ getGlh = function(numGroups, maxObs) {
               test = "Wald, KR ddf"))
 }
 
+
+
 #
 # Generate longitudinal design
 #
@@ -83,35 +87,87 @@ generateLongitudinalDesign = function(params) {
   description = paste(c(params$numGroups, " group longitudinal design, test of time by treatment interaction. ",
                         "Per group N = ", params$perGroupN, 
                         ", max observations = ", params$maxObservations,
-                        ", monotone missing (in half of ISUs) = ", params$monotone,
+                        ", monotone missing? = ", (params$monotone==1),
                         ", target power = ", params$targetPower), collapse="")
-  incompleteSize = floor(params$clusterSize * (1-params$missingPercent))
+
   
   # build the pattern list
   patternList = list()
   pattern = 1
   for(grp in 1:params$numGroups) {
-    patternList[[pattern]] = 
-      new("missingDataPattern", group=grp, observations=1:params$clusterSize, 
-          designMatrix = matrix(rep(1,params$clusterSize)) %x% matrix(diag(params$numGroups)[grp,],nrow=1),
-          size=params$perGroupN/2)
-    patternList[[pattern+1]] = 
-      new("missingDataPattern", group=grp, observations=1:incompleteSize, 
-          designMatrix = matrix(rep(1,incompleteSize)) %x% matrix(diag(params$numGroups)[grp,],nrow=1),
-          size=params$perGroupN/2)
-    pattern = pattern + 2
+    # between effects design matrix
+    designBetween = matrix(diag(params$numGroups)[grp,], nrow=1)
+    
+    if (params$monotone) {
+      ## monotone dropout pattern - once missing, never come back
+      # complete case
+      patternList[[pattern]] = 
+        new("missingDataPattern", group=grp, observations=1:params$maxObservations, 
+            designMatrix = (designBetween %x% diag(params$maxObservations)),
+            size=floor(params$perGroupN*0.5))
+      # missing last observation
+      missingPattern1 = 1:(params$maxObservations-1)
+      patternList[[pattern+1]] = 
+        new("missingDataPattern", group=grp, observations=missingPattern1, 
+            designMatrix = (designBetween %x% 
+                              matrix(diag(params$maxObservations)[missingPattern1,], 
+                                     nrow=length(missingPattern1))),
+            size=floor(params$perGroupN*0.3))
+      # missing last 2 observations
+      missingPattern2 = 1:(params$maxObservations-2)
+      patternList[[pattern+2]] = 
+        new("missingDataPattern", group=grp, observations=missingPattern2, 
+            designMatrix = (designBetween %x% 
+                              matrix(diag(params$maxObservations)[missingPattern2,], 
+                                     nrow=length(missingPattern2))),
+            size=floor(params$perGroupN*0.2))
+
+    } else {
+      ## Non-monotone dropout pattern 
+      ## - delete 2nd observations in 30%, delete 3rd in 20%
+      ## - if max observations > 3, also delete 4th
+      # complete case
+      patternList[[pattern]] = 
+        new("missingDataPattern", group=grp, observations=1:params$maxObservations, 
+            designMatrix = (designBetween %x% diag(params$maxObservations)),
+            size=floor(params$perGroupN*0.5))
+      # missing 2nd (and 4th) observation(s)
+      if (params$maxObservations == 3) {
+        missingPattern1 = c(1,3)
+      } else {
+        missingPattern1 = c(1,3,5:params$maxObservations)
+      }
+      patternList[[pattern+1]] = 
+        new("missingDataPattern", group=grp, observations=missingPattern1, 
+            designMatrix = (designBetween %x% 
+                              matrix(diag(params$maxObservations)[missingPattern1,], 
+                                     nrow=length(missingPattern1))),
+            size=floor(params$perGroupN*0.3))
+      # missing 3rd (and 4th) observation(s)
+      if (params$maxObservations == 3) {
+        missingPattern2 = c(1,2)
+      } else {
+        missingPattern2 = c(1,2,5:params$maxObservations)
+      }
+      patternList[[pattern+2]] = 
+        new("missingDataPattern", group=grp, observations=missingPattern2, 
+            designMatrix = (designBetween %x% 
+                              matrix(diag(params$maxObservations)[missingPattern2,], 
+                                     nrow=length(missingPattern2))),
+            size=floor(params$perGroupN*0.2))
+      
+    }
+    pattern = pattern + 3
   }
   
   # build the design
-  cluster = matrix(rep(1,params$clusterSize))
   design = new("design.mixed", name = name, description = description,
                xPatternList = patternList,
-               beta = matrix(c(1,rep(0,params$numGroups-1))),
-               Sigma = params$sigmaSq * (params$icc * (cluster %*% t(cluster)) + 
-                                           diag(params$clusterSize) * (1 - params$icc))
+               beta = matrix(c(1,rep(0,(params$maxObservations-1)),rep(0,params$maxObservations*(params$numGroups-1)))),
+               Sigma = learMatrix(params$maxObservations,params$rho,params$delta)
   )
   # get the appropriate hypothesis
-  glh = getGlhByNumGroups(params$numGroups)
+  glh = getGlh(params$numGroups, params$maxObservations)
   # update the beta scale
   betaScale = getBetaScaleByPower(design, glh, targetPower=params$targetPower)  
   design@beta = matrix(c(1,rep(0,params$numGroups-1))) * betaScale  
@@ -124,15 +180,15 @@ generateLongitudinalDesign = function(params) {
 
 generateDesigns.longitudinal = function() {
   #
-  # For each cluster randomized design, we
+  # For each longitudinal randomized design, we
   # vary the following parameters
   #
   # number of treatment groups
   numGroupsList = c(2, 4)
-  # total clusters per treatment group
-  perGroupNList = c(10, 40)
-  # total participants per cluster
-  maxObservationsList = c(3, 5, 10)
+  # total ISUs per treatment group
+  perGroupNList = c(30, 60)
+  # max observations for each participants
+  maxObservationsList = c(5, 10)
   # missing data pattern (either monotone or non-monotone)
   monotoneList = c(1, 0)
   # in all cases, we select the scale factor 
@@ -159,36 +215,37 @@ generateDesigns.longitudinal = function() {
   # Calculate the appropriate betaScale values
   # and build the list of designs
   #
-  clusterDesignList = list()
+  longitudinalDesignList = list()
   betaScaleList = vector()
   for(i in 1:length(paramComboList$numGroups)) {
+    cat("Case ", i, "\n")
     params = paramComboList[i,]
-    clusterDesignList[[i]] = list(generateClusterRandomizedDesign(params), 
-                                  getGlhByNumGroups(params$numGroups))                                     
-    betaScaleList[i] = clusterDesignList[[i]][[1]]@beta[1,1]
+    longitudinalDesignList[[i]] = list(generateLongitudinalDesign(params), 
+                                  getGlh(params$numGroups, params$maxObservations))                                     
+    betaScaleList[i] = longitudinalDesignList[[i]][[1]]@beta[1,1]
   }
   paramComboList$betaScale = betaScaleList
   
   # write the parameter data to a csv file
-  write.csv(paramComboList, file=dataFile("clusterRandomizedParams.csv"),
+  write.csv(paramComboList, file=dataFile("longitudinalParams.csv"),
             row.names=FALSE, eol="\r\n")
   # write the designs to an Rdata file
-  save(clusterDesignList, file=dataFile("clusterRandomizedDesigns.RData"))
+  save(longitudinalDesignList, file=dataFile("longitudinalDesigns.RData"))
   
 }
 
-calculatePower.clusterRandomized = function(runEmpirical=FALSE) {
-  if (!file.exists(dataFile("clusterRandomizedParams.csv")) ||
-        !file.exists(dataFile("clusterRandomizedDesigns.RData"))) {
-    generateDesigns.clusterRandomized()
+calculatePower.longitudinal = function(runEmpirical=FALSE) {
+  if (!file.exists(dataFile("longitudinalParams.csv")) ||
+        !file.exists(dataFile("longitudinalDesigns.RData"))) {
+    generateDesigns.longitudinal()
   }
   
   if (runEmpirical) {
-    # exec SAS file to run empirical power for 4 group cluster designs
+    # exec SAS file to run empirical power for longitudinal designs
     # requires SAS installation
   }
   
-  empiricalFile = dataFile("clusterRandomizedEmpirical.csv");
+  empiricalFile = dataFile("longitudinalEmpirical.csv");
   if (!file.exists(empiricalFile)) {
     stop(paste(c("Missing empirical power file: ", empiricalFile), collapse=""))
   }
@@ -196,26 +253,26 @@ calculatePower.clusterRandomized = function(runEmpirical=FALSE) {
   powerResults = read.csv(empiricalFile)
   
   # load the designs and calculate power
-  load(dataFile("clusterRandomizedDesigns.RData"))
+  load(dataFile("longitudinalDesigns.RData"))
   for(i in 1:length(powerResults$targetPower)) {
     
   }
   
   # combine with the empirical set and save to disk
   powerResults$approxPower = approxPowerList
-  write.csv(dataFile("clusterRandomizedResults.csv"))
+  write.csv(dataFile("longitudinalResults.csv"))
   
 }
 
 #
 # Build summary tables and power curves
 #
-summarizeResults.clusterRandomized = function() {
-  powerResults = read.csv(dataFile("cluster4GroupPowerResults.csv"))
+summarizeResults.longitudinal = function() {
+  powerResults = read.csv(dataFile("longitudinalResults.csv"))
   
   
 }
 
 
-generateDesigns.clusterRandomized()
+generateDesigns.longitudinal()
 

@@ -153,7 +153,8 @@ getWaldMoments = function(design, glh, homoscedastic=TRUE) {
   for(i in 1:length(design@xPatternList)) {
     pattern = design@xPatternList[[i]]
     # get sigma matrix for this pattern
-    deletionMatrix = diag(maxObs)[pattern@observations,]
+    deletionMatrix = matrix(diag(maxObs)[pattern@observations,], 
+                            nrow=length(pattern@observations))
     SigmaD = deletionMatrix %*% design@Sigma %*% t(deletionMatrix)
     
     # add to the list
