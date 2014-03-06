@@ -12,7 +12,7 @@
 #
 library(magic)
 library(invWishartSum)
-
+library(Matrix)
 #
 # Class which describes a specific data pattern
 # (either complete or with missing observations)
@@ -23,12 +23,14 @@ setClass(
   representation (
     group = "numeric",
     observations = "numeric",
-    size = "numeric"
+    size = "numeric",
+    designMatrix = "matrix"
     ),
   prototype (
     group = 1,
     observations = c(1),
-    size = 10
+    size = 10,
+    designMatrix = diag(1)
     )  
   ) 
   
@@ -46,10 +48,14 @@ setClass (
   prototype ( name ="",
               description ="",
               xPatternList = c(
-                new("missingDataPattern", group=1, observations=c(1,2,3), size=20),
-                new("missingDataPattern", group=1, observations=c(1,2), size=20),
-                new("missingDataPattern", group=2, observations=c(1,2,3), size=20),
-                new("missingDataPattern", group=2, observations=c(1,2), size=15) 
+                new("missingDataPattern", group=1, observations=c(1,2,3), size=20,
+                    designMatrix=matrix(cbind(diag(3), matrix(rep(0,9), nrow=3)))),
+                new("missingDataPattern", group=1, observations=c(1,2), size=20,
+                    designMatrix=matrix(cbind(diag(2), matrix(rep(0,6), nrow=2)))),
+                new("missingDataPattern", group=2, observations=c(1,2,3), size=20,
+                    designMatrix=matrix(cbind(matrix(rep(0,9), nrow=3), diag(3)))),
+                new("missingDataPattern", group=2, observations=c(1,2), size=15,
+                    designMatrix=matrix(cbind(matrix(rep(0,6), nrow=2), diag(2)))) 
                 ),
               beta = matrix(c(1,1,1,0,0,0),ncol=1),
               Sigma = matrix(c(1,0.3,0.3,0.3,1,0.3,0.3,0.3,1), nrow=3)
@@ -117,7 +123,7 @@ getKRParams = function(a, moments) {
 # statistic given the mixed model design
 #
 #
-getWaldMoments = function(design, glh, homoscedastic) {
+getWaldMoments = function(design, glh, homoscedastic=TRUE) {
   
   # determine the number of unique treatment groups
   numGroups = length(unique(sapply(design@xPatternList, function(x) {
@@ -127,68 +133,46 @@ getWaldMoments = function(design, glh, homoscedastic) {
   # get the max number of planned observations 
   maxObs = nrow(design@Sigma)
   
-  # build the weight matrix for C*beta-thetaNull.  We weight by the
-  # number of deletion classes containing the ith element of beta
-  weightMatrix = diag(unlist(lapply(1:numGroups, function(group) {
-    groupPatterns = Filter(function(x) { x@group==group }, design@xPatternList)
-    return(sapply(1:maxObs, function(obs, groupPatterns) {
-      return(1/sum(sapply(groupPatterns, 
-                          function(pattern, obs) {
-        return(as.numeric(obs %in% pattern@observations))
-      }, obs)))
-    }, groupPatterns))
-  })))
-
+  # generate the inverse Wishart list 
+  patternDfList = vector()
+  for(pattern in design@xPatternList) {
+    patternString = paste(sort(pattern@observations), collapse="_")
+    if (is.na(patternDfList[patternString])) {
+      patternDfList[patternString] = pattern@size
+    } else {
+      patternDfList[patternString] = patternDfList[patternString] + pattern@size
+    }
+  }
   
-  # calculate the approximate distribution of the stacked Sigma matrix
-  # by estimating the distribution of the sum of quadratic 
-  # forms in inverse Wishart matrices
-  # 
-  # first, build the list of Wisharts and corresponding design matrices
+  # generate the corresponding design matrix list.
+  # also generate the list of Sigma matrices for each ISU
   invWishartList = list()
   designMatrixList = list()
-  betaCovarSum = matrix(rep(0, (numGroups*maxObs)^2), nrow=(numGroups*maxObs))
-  j = 1
+  SigmaList = list()
+  isu = 1
   for(i in 1:length(design@xPatternList)) {
     pattern = design@xPatternList[[i]]
-    # get the between/within portions of the design
-    designBetween = matrix(diag(numGroups)[pattern@group,], nrow=1)
-    designWithin = diag(maxObs)[pattern@observations,]
+    # get sigma matrix for this pattern
+    deletionMatrix = diag(maxObs)[pattern@observations,]
+    SigmaD = deletionMatrix %*% design@Sigma %*% t(deletionMatrix)
     
-    # calculate Sigma for the deletion class
-    SigmaD = designWithin %*% design@Sigma %*% t(designWithin)
-    
-    ##
-    ## Setup the inputs to calculate the approximate Wishart for
-    ## the middle term of the Wald statistic
-    ##
-    # build the design matrix - kronecker
-    X = designBetween %x% designWithin
-    # build the corresponding inverse Wisharts
-    invWishart = invert(new("wishart", df=pattern@size, covariance=SigmaD ))
     # add to the list
-    for(h in 1:pattern@size) {
-      designMatrixList[[j]] = X
-      invWishartList[[j]] = invWishart
-      j = j+1
+    for(j in 1:pattern@size) {
+      designMatrixList[[isu]] = pattern@designMatrix
+      invWishartList[[isu]] = 
+        invert(new("wishart", 
+                   df=as.numeric(patternDfList[paste(sort(pattern@observations), collapse="_")]),
+                   covariance=SigmaD))
+      SigmaList[[isu]] = SigmaD
+      isu = isu + 1
     }
-    
-    ##
-    ## add in the next term for the beta covariance
-    ##
-    betaCovarSum = (betaCovarSum + 
-                   ((1/pattern@size) * 
-                      (t(designWithin) %*% SigmaD %*% designWithin) %x%
-                      (t(designBetween) %*% designBetween)
-                    ))
-    
   }
   class(invWishartList) = "inverseWishart"
   
   # calculate the approximating inverse Wishart for X' * SigmaInv * X
   distXtSigmaInvX = approximateInverseWishart(invWishartList, 
-                                               designMatrixList,
-                                               method="trace")
+                                              designMatrixList,
+                                              method="trace")
   # now invert to get a Wishart
   distXtSigmaInvXInv = invert(distXtSigmaInvX)
   # scale by C matrices and form corresponding wishart
@@ -198,14 +182,18 @@ getWaldMoments = function(design, glh, homoscedastic) {
                                             t(glh@fixedContrast))) 
   
   # calculate the approximate covariance of thetaDiff = C*beta-thetaNull
-  thetaDiffHat.Sigma = (glh@fixedContrast %*% weightMatrix %*% 
-                      betaCovarSum %*% weightMatrix %*% t(glh@fixedContrast))
+  sumXtSigmaInvX = Reduce("+", lapply(1:length(designMatrixList), function(isu) {
+    return(t(designMatrixList[[isu]]) %*% solve(SigmaList[[isu]]) %*% 
+             designMatrixList[[isu]])
+  }))
+  thetaDiffHat.Sigma = (glh@fixedContrast %*%
+                          solve(sumXtSigmaInvX) %*%
+                          t(glh@fixedContrast))
   # calculate the mean
   thetaDiffHat.mu = glh@fixedContrast %*% design@beta - glh@thetaNull
-                    
-  qp = numGroups * maxObs
-  a = nrow(glh@fixedContrast)
-  
+
+  # form the appropriate F distribution
+  a = nrow(glh@fixedContrast)  
   if (a == 1) {
     # special case when contrast has a single row
     ndf = 1
@@ -220,34 +208,32 @@ getWaldMoments = function(design, glh, homoscedastic) {
     # a > 1 case
     precision = solve(distCXtSigmaInvXInvCt@covariance)
     covarRatio = precision %*% thetaDiffHat.Sigma
-    tmpOmega = t(thetaDiffHat.mu) %*% solve(thetaDiffHat.Sigma) %*% thetaDiffHat.mu
+    tmpOmega = t(thetaDiffHat.mu) %*% precision %*% thetaDiffHat.mu
     deltaStar = (
-      2*((tmpOmega * sum(diag(covarRatio))) + 2 * tmpOmega^2) / 
+      ((tmpOmega * sum(diag(covarRatio))) + 2 * tmpOmega^2) / 
         (sum(diag(covarRatio))^2 + 
            2 * (t(thetaDiffHat.mu) %*% precision %*% thetaDiffHat.Sigma %*% 
                   precision %*% thetaDiffHat.mu))
-      )
+    )
     nStar = deltaStar * sum(diag(covarRatio)) / tmpOmega
     lambdaStar = tmpOmega / deltaStar
     
     ndf = nStar
     ddf = distCXtSigmaInvXInvCt@df
     omega = deltaStar
-
-    Fscale = (lambdaStar * nStar)/((ddf) * a)
+    
+    Fscale = sum(diag(covarRatio))/((ddf) * a)
     
   }
-
+  
   # Calculate the moments of the F under the null 
   mu.null = Fscale * (ddf / (ddf - 2))
   var.null = Fscale^2 * (2 * ddf^2 * (ndf + ddf - 2)) / (ndf * (ddf - 2)^2 * (ddf - 4))
   # Calculate the moments of the F under the alternative
   mu.alt = Fscale * (ddf * (ndf + omega)) / (ndf * (ddf - 2))
   var.alt = Fscale^2 * (2 * (ddf / ndf)^2 * 
-               ((ndf + omega)^2 + (ndf + 2 * omega) * (ddf - 2)) / 
-               ((ddf - 2)^2 * (ddf - 4)))
-    
-    
+                          ((ndf + omega)^2 + (ndf + 2 * omega) * (ddf - 2)) / 
+                          ((ddf - 2)^2 * (ddf - 4)))
   
   return(data.frame(mu.null=mu.null, var.null=var.null, mu.alt=mu.alt, var.alt=var.alt))
 }
@@ -268,9 +254,6 @@ mixedPower = function(design, glh, homoscedastic=TRUE) {
   # get the critical F
   Fcrit = qf(1-glh@alpha,a,params$ddf)
   
-  # scale it down by lambda
-  #Fcrit = params$lambda * Fcrit
-  
   # calculate power;
   power = 1 - pf(Fcrit, a, params$ddf, params$omega);
   
@@ -279,72 +262,9 @@ mixedPower = function(design, glh, homoscedastic=TRUE) {
 }
 
 
-
-scaleDesign = function(betaScale) {
-  return (
-    new("design.mixed",
-        name ="3 treatments, 3 repeated measures, unbalanced",
-        description ="",
-        xPatternList = c(
-          new("missingDataPattern", group=1, observations=c(1,2,3), size=20),
-          new("missingDataPattern", group=1, observations=c(1,2), size=20),
-          new("missingDataPattern", group=2, observations=c(1,2,3), size=20),
-          new("missingDataPattern", group=2, observations=c(1,2), size=15),
-          new("missingDataPattern", group=3, observations=c(1,2,3), size=30),
-          new("missingDataPattern", group=3, observations=c(1,2), size=15) 
-        ),
-        beta = betaScale*matrix(c(1,1,1,0,0,0,0,0,0),ncol=1),
-        Sigma = matrix(c(1,0.3,0.3,0.3,1,0.3,0.3,0.3,1), nrow=3)
-    )
-    )
-}
-
-## 
-mixed1 = new("design.mixed",
-             name ="3 treatments, 3 repeated measures, unbalanced",
-             description ="",
-             xPatternList = c(
-               new("missingDataPattern", group=1, observations=c(1,2,3), size=20),
-               new("missingDataPattern", group=1, observations=c(1,2), size=20),
-               new("missingDataPattern", group=2, observations=c(1,2,3), size=20),
-               new("missingDataPattern", group=2, observations=c(1,2), size=15),
-               new("missingDataPattern", group=3, observations=c(1,2,3), size=30),
-               new("missingDataPattern", group=3, observations=c(1,2), size=15) 
-             ),
-             beta = 1*matrix(c(1,1,1,0,0,0,0,0,0),ncol=1),
-             Sigma = matrix(c(1,0.3,0.3,0.3,1,0.3,0.3,0.3,1), nrow=3)
-             )
-
-mixed.balanced = new("design.mixed",
-             name ="3 treatments, 3 repeated measures, balanced",
-             description ="",
-             xPatternList = c(
-               new("missingDataPattern", group=1, observations=c(1,2,3), size=400),
-               new("missingDataPattern", group=2, observations=c(1,2,3), size=400),
-               new("missingDataPattern", group=3, observations=c(1,2,3), size=400)
-             ),
-             beta = matrix(c(1,1,1,0,0,0,0,0,0),ncol=1),
-             Sigma = matrix(c(1,0.3,0.3,0.3,1,0.3,0.3,0.3,1), nrow=3)
-)
-
 csMatrix = function(size, rho) {
   ones = matrix(rep(1,size))
   return(ones %*% t(ones) * rho + diag(size) * (1 - rho))
 }
 
-
-glh1= new("glh.mixed",
-          alpha = 0.05,
-          fixedContrast = matrix(c(1/3,1/3,1/3,-1/3,-1/3,-1/3,0,0,0,
-                                   1/3,1/3,1/3,0,0,0,-1/3,-1/3,-1/3), nrow=2, byrow=TRUE),
-          thetaNull = matrix(c(0,0), nrow=2),
-          test = "Wald, KR ddf"
-          )
-
-glh2= new("glh.mixed",
-          alpha = 0.05,
-          fixedContrast = matrix(c(1/3,1/3,1/3,-1/3,-1/3,-1/3,0,0,0), nrow=1, byrow=TRUE),
-          thetaNull = matrix(c(0), nrow=1),
-          test = "Wald, KR ddf"
-)
 

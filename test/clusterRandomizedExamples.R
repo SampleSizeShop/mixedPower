@@ -326,11 +326,15 @@ design.a1bal = new("design.mixed",
                    name ="a=1, balanced",
                    description ="",
                    xPatternList = c(
-                     new("missingDataPattern", group=1, observations=c(1:5), size=10),
-                     new("missingDataPattern", group=2, observations=c(1:5), size=10)
+                     new("missingDataPattern", group=1, observations=c(1:5), 
+                         designMatrix=(matrix(rep(1,5)) %x% matrix(c(1,0),nrow=1)),
+                         size=10),
+                     new("missingDataPattern", group=2, observations=c(1:5), 
+                         designMatrix=(matrix(rep(1,5)) %x% matrix(c(0,1),nrow=1)),
+                                       size=10)
                    ),
                    beta = matrix(c(1,0), nrow=2),
-                   Sigma = matrix(c(1,0.3,0.3,0.3,1,0.3,0.3,0.3,1), nrow=3)
+                   Sigma = 2*csMatrix(5,0.3)
 )
 glh.a1bal = new("glh.mixed",
             alpha = 0.05,
@@ -339,9 +343,9 @@ glh.a1bal = new("glh.mixed",
             test = "Wald, KR ddf")
 
 mixedPower2(design.a1bal, glh.a1bal, invWishartList, 
-            scaleMatrixList, X[,1:2], SigmaS, fiddle=1.07)
+            scaleMatrixList, X[,1:2], SigmaS)
 
-
+mixedPower(design.a1bal, glh.a1bal)
 #
 # a > 1, balanced
 #
@@ -376,9 +380,15 @@ design.a2bal = new("design.mixed",
                    name ="a>1, balanced",
                    description ="",
                    xPatternList = c(
-                     new("missingDataPattern", group=1, observations=c(1:5), size=10),
-                     new("missingDataPattern", group=2, observations=c(1:5), size=10),
-                     new("missingDataPattern", group=3, observations=c(1:5), size=10)
+                     new("missingDataPattern", group=1, observations=c(1:5), 
+                         designMatrix=(matrix(rep(1,5)) %x% matrix(c(1,0,0),nrow=1)),
+                         size=10),
+                     new("missingDataPattern", group=2, observations=c(1:5), 
+                         designMatrix=(matrix(rep(1,5)) %x% matrix(c(0,1,0),nrow=1)),
+                         size=10),
+                     new("missingDataPattern", group=3, observations=c(1:5), 
+                         designMatrix=(matrix(rep(1,5)) %x% matrix(c(0,0,1),nrow=1)),
+                         size=10)
                    ),
                    beta = matrix(c(1,0,0), nrow=3),
                    Sigma = 2*csMatrix(5,0.3)
@@ -391,6 +401,8 @@ glh.a2bal = new("glh.mixed",
 
 mixedPower2(design.a2bal, glh.a2bal, invWishartList, 
             scaleMatrixList, X[,1:3], SigmaS)
+
+mixedPower(design.a2bal, glh.a2bal)
 
 
 # determine the number of unique treatment groups
