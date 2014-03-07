@@ -186,9 +186,9 @@ generateDesigns.longitudinal = function() {
   # number of treatment groups
   numGroupsList = c(2, 4)
   # total ISUs per treatment group
-  perGroupNList = c(30, 60)
+  perGroupNList = c(15, 40)
   # max observations for each participants
-  maxObservationsList = c(5, 10)
+  maxObservationsList = c(3,5)
   # missing data pattern (either monotone or non-monotone)
   monotoneList = c(1, 0)
   # in all cases, we select the scale factor 
@@ -228,7 +228,7 @@ generateDesigns.longitudinal = function() {
   
   # write the parameter data to a csv file
   write.csv(paramComboList, file=dataFile("longitudinalParams.csv"),
-            row.names=FALSE) #, eol="\r\n")
+            row.names=FALSE, eol="\r\n")
   # write the designs to an Rdata file
   save(longitudinalDesignList, file=dataFile("longitudinalDesigns.RData"))
   
