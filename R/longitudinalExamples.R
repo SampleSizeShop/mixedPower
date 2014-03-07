@@ -164,7 +164,7 @@ generateLongitudinalDesign = function(params) {
   design = new("design.mixed", name = name, description = description,
                xPatternList = patternList,
                beta = matrix(c(1,rep(0,(params$maxObservations-1)),rep(0,params$maxObservations*(params$numGroups-1)))),
-               Sigma = learMatrix(params$maxObservations,params$rho,params$delta)
+               Sigma = params$sigmaSq * learMatrix(params$maxObservations,params$rho,params$delta)
   )
   # get the appropriate hypothesis
   glh = getGlh(params$numGroups, params$maxObservations)
@@ -198,7 +198,7 @@ generateDesigns.longitudinal = function() {
   rhoList = c(0.4)
   deltaList = c(0.5)
   # sigma squared
-  sigmaSqList = c(2)
+  sigmaSqList = c(1)
   
   # generate parameters
   paramList = list(monotone=monotoneList, 
@@ -228,7 +228,7 @@ generateDesigns.longitudinal = function() {
   
   # write the parameter data to a csv file
   write.csv(paramComboList, file=dataFile("longitudinalParams.csv"),
-            row.names=FALSE, eol="\r\n")
+            row.names=FALSE) #, eol="\r\n")
   # write the designs to an Rdata file
   save(longitudinalDesignList, file=dataFile("longitudinalDesigns.RData"))
   

@@ -42,8 +42,7 @@ proc import datafile="&OUT_DATA_DIR\clusterRandomizedParams.csv"
 run;
 
 data clusterRandomizedParams;
-	set clusterRandomizedParams;
-	where clusterSize = 5 and perGroupN = 40;
+	set clusterRandomizedParams(firstObs=7 obs=9);
 run;
 /*
 * Calculate empirical power for the 4 group, cluster randomized trials
@@ -101,7 +100,7 @@ proc iml;
 		simlib= "outData";
 		simprefix = "clusterExamples";
 
-		blockSize = 200;
+		blockSize = 100;
 		*if clusterSize > 50 then blockSize = 100;
 		call calculateEmpiricalPowerConditional(10000, blockSize,  
 		  simlib, simprefix, macroName,
