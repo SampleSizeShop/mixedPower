@@ -26,24 +26,15 @@
 %mend;
 
 * define the mixed model fitting macro for 2 group 10 repeated measures design; 
-%macro longit2Group10Rm(datasetName);
+%macro longit2Group3Rm(datasetName);
 	proc mixed data=&datasetName;
-		model y = trt1_rep1 trt1_rep2 trt1_rep3 trt1_rep4 trt1_rep5
-				trt1_rep6 trt1_rep7 trt1_rep8 trt1_rep9 trt1_rep10
-				trt2_rep1 trt2_rep2 trt2_rep3 trt2_rep4 trt2_rep5
-				trt2_rep6 trt2_rep7 trt2_rep8 trt2_rep9 trt2_rep10 / noint solution ddfm=kr;
+		model y = trt1_rep1 trt1_rep2 trt1_rep3 
+				trt2_rep1 trt2_rep2 trt2_rep3 / noint solution ddfm=kr;
 		repeated / subject=subjectID type=UN;
 		by setID;
 		contrast "time by treatment"
 			trt1_rep1 1 trt1_rep2 -1 trt2_rep1 -1 trt2_rep2 1,
-			trt1_rep1 1 trt1_rep3 -1 trt2_rep1 -1 trt2_rep3 1,
-			trt1_rep1 1 trt1_rep4 -1 trt2_rep1 -1 trt2_rep4 1,
-			trt1_rep1 1 trt1_rep5 -1 trt2_rep1 -1 trt2_rep5 1,
-			trt1_rep1 1 trt1_rep6 -1 trt2_rep1 -1 trt2_rep6 1,
-			trt1_rep1 1 trt1_rep7 -1 trt2_rep1 -1 trt2_rep7 1,
-			trt1_rep1 1 trt1_rep8 -1 trt2_rep1 -1 trt2_rep8 1,
-			trt1_rep1 1 trt1_rep9 -1 trt2_rep1 -1 trt2_rep9 1,
-			trt1_rep1 1 trt1_rep10 -1 trt2_rep1 -1 trt2_rep10 1;
+			trt1_rep1 1 trt1_rep3 -1 trt2_rep1 -1 trt2_rep3 1;
 	run;
 %mend;
 
@@ -75,49 +66,24 @@
 	run;
 %mend;
 
-%macro longit4Group10Rm(datasetName);
+%macro longit4Group3Rm(datasetName);
 	proc mixed data=&datasetName;
-		model y = trt1_rep1 trt1_rep2 trt1_rep3 trt1_rep4 trt1_rep5
-				trt1_rep6 trt1_rep7 trt1_rep8 trt1_rep9 trt1_rep10
-				trt2_rep1 trt2_rep2 trt2_rep3 trt2_rep4 trt2_rep5 
-				trt2_rep6 trt2_rep7 trt2_rep8 trt2_rep9 trt2_rep10
-				trt3_rep1 trt3_rep2 trt3_rep3 trt3_rep4 trt3_rep5 
-				trt3_rep6 trt3_rep7 trt3_rep8 trt3_rep9 trt3_rep10
-				trt4_rep1 trt4_rep2 trt4_rep3 trt4_rep4 trt4_rep5 
-				trt4_rep6 trt4_rep7 trt4_rep8 trt4_rep9 trt4_rep10
+		model y = trt1_rep1 trt1_rep2 trt1_rep3 
+				trt2_rep1 trt2_rep2 trt2_rep3 
+				trt3_rep1 trt3_rep2 trt3_rep3 
+				trt4_rep1 trt4_rep2 trt4_rep3 
 				/ noint solution ddfm=kr;
 		repeated / subject=subjectID type=UN;
 		by setID;
 		contrast "time by treatment"
 			trt1_rep1 1 trt1_rep2 -1 trt2_rep1 -1 trt2_rep2 1,
 			trt1_rep1 1 trt1_rep3 -1 trt2_rep1 -1 trt2_rep3 1,
-			trt1_rep1 1 trt1_rep4 -1 trt2_rep1 -1 trt2_rep4 1,
-			trt1_rep1 1 trt1_rep5 -1 trt2_rep1 -1 trt2_rep5 1,
-			trt1_rep1 1 trt1_rep6 -1 trt2_rep1 -1 trt2_rep6 1,
-			trt1_rep1 1 trt1_rep7 -1 trt2_rep1 -1 trt2_rep7 1,
-			trt1_rep1 1 trt1_rep8 -1 trt2_rep1 -1 trt2_rep8 1,
-			trt1_rep1 1 trt1_rep9 -1 trt2_rep1 -1 trt2_rep9 1,
-			trt1_rep1 1 trt1_rep10 -1 trt2_rep1 -1 trt2_rep10 1,
-
+			
 			trt1_rep1 1 trt1_rep2 -1 trt3_rep1 -1 trt3_rep2 1,
 			trt1_rep1 1 trt1_rep3 -1 trt3_rep1 -1 trt3_rep3 1,
-			trt1_rep1 1 trt1_rep4 -1 trt3_rep1 -1 trt3_rep4 1,
-			trt1_rep1 1 trt1_rep5 -1 trt3_rep1 -1 trt3_rep5 1,
-			trt1_rep1 1 trt1_rep6 -1 trt3_rep1 -1 trt3_rep6 1,
-			trt1_rep1 1 trt1_rep7 -1 trt3_rep1 -1 trt3_rep7 1,
-			trt1_rep1 1 trt1_rep8 -1 trt3_rep1 -1 trt3_rep8 1,
-			trt1_rep1 1 trt1_rep9 -1 trt3_rep1 -1 trt3_rep9 1,
-			trt1_rep1 1 trt1_rep10 -1 trt3_rep1 -1 trt3_rep10 1,
 
 			trt1_rep1 1 trt1_rep2 -1 trt4_rep1 -1 trt4_rep2 1,
-			trt1_rep1 1 trt1_rep3 -1 trt4_rep1 -1 trt4_rep3 1,
-			trt1_rep1 1 trt1_rep4 -1 trt4_rep1 -1 trt4_rep4 1,
-			trt1_rep1 1 trt1_rep5 -1 trt4_rep1 -1 trt4_rep5 1,
-			trt1_rep1 1 trt1_rep6 -1 trt4_rep1 -1 trt4_rep6 1,
-			trt1_rep1 1 trt1_rep7 -1 trt4_rep1 -1 trt4_rep7 1,
-			trt1_rep1 1 trt1_rep8 -1 trt4_rep1 -1 trt4_rep8 1,
-			trt1_rep1 1 trt1_rep9 -1 trt4_rep1 -1 trt4_rep9 1,
-			trt1_rep1 1 trt1_rep10 -1 trt4_rep1 -1 trt4_rep10 1;
+			trt1_rep1 1 trt1_rep3 -1 trt4_rep1 -1 trt4_rep3 1;
 	run;
 %mend;
 
@@ -131,28 +97,10 @@ proc import datafile="&OUT_DATA_DIR\longitudinalParams.csv"
 run;
 
 data longitudinalParams;
-	set longitudinalParams(firstObs=1 obs=1);
+	set longitudinalParams;
+	where maxObservations = 5;
 run;
 
-proc iml;
-maxObservations=5;
-min1 = 4;
-min2 = 3;
-numMin2=1;
-numMin1=2;
-numComplete=3;
-isu = 1;
-
-			* create subject IDs;
-			idList = idList // (T(isu:isu+numComplete-1) @ J(maxObservations,1,1));
-			isu = isu + numComplete + 1;
-			idList = idList // (T(isu:isu+numMin1-1) @ J(min1,1,1));
-			isu = isu + numMin1 + 1;
-			idList = idList // (T(isu:isu+numMin2-1) @ J(min2,1,1));
-			isu = isu + numMin2 + 1;
-
-			print idList;
-quit;
 /*
 * Calculate empirical power for the 4 group, cluster randomized trials
 */
@@ -210,7 +158,7 @@ proc iml;
 				SigmaGroupMin2 = I(numMin2) @ (I(maxObservations)[(1:min2),] * SigmaComplete * T(I(maxObservations)[(1:min2),]));
 				SigmaGroup = block(SigmaGroupComplete, SigmaGroupMin1, SigmaGroupMin2);
 
-				if grp = 1 then SigmaS = SigmaGroup;
+				if isu = 1 then SigmaS = SigmaGroup;
 				else SigmaS = block(SigmaS, SigmaGroup);
 
 			end;
@@ -226,13 +174,15 @@ proc iml;
 
 				* create non-monotone missing patterns;
 				if maxObservations = 3 then do;
-					min1Pattern = {1,3};
-					min2Pattern = {1,3} || (5:maxObservations);
+					min1Pattern = {1 3};
+					min2Pattern = {1 2};
 				end;
 				else do;
-					min1Pattern = {1,2};
-					min2Pattern = {1,2} || (5:maxObservations);
+					min1Pattern = {1 3 5};
+					min2Pattern = {1 2 5};
 				end;
+				min1 = NCOL(min1Pattern);
+				min2 = NCOL(min2Pattern);
 				
 				* add design matrices for each isu;
 				X = X // (J(numComplete,1,1) @ (designBetween @ I(maxObservations))) 
@@ -244,7 +194,8 @@ proc iml;
 				SigmaGroupMin2 = I(numMin2) @ (I(maxObservations)[min2Pattern,] * SigmaComplete * T(I(maxObservations)[min2Pattern,]));
 				SigmaGroup = block(SigmaGroupComplete, SigmaGroupMin1, SigmaGroupMin2);
 				* concatenate onto full sigma matrix;
-				SigmaS = block(SigmaS, SigmaGroup);
+				if isu = 1 then SigmaS = SigmaGroup;
+				else SigmaS = block(SigmaS, SigmaGroup);
 
 			end;
 
@@ -265,11 +216,9 @@ proc iml;
 				macroName = "longit2Group5Rm";
 			end;
 			else do;
-				XFullColNames={"subjectId" "trt1_rep1" "trt1_rep2" "trt1_rep3" "trt1_rep4" "trt1_rep5"
-				"trt1_rep6" "trt1_rep7" "trt1_rep8" "trt1_rep9" "trt1_rep10"
-				"trt2_rep1" "trt2_rep2" "trt2_rep3" "trt2_rep4" "trt2_rep5"
-				"trt2_rep6" "trt2_rep7" "trt2_rep8" "trt2_rep9" "trt2_rep10"}; 
-				macroName = "longit2Group10Rm";
+				XFullColNames={"subjectId" "trt1_rep1" "trt1_rep2" "trt1_rep3"
+								"trt2_rep1" "trt2_rep2" "trt2_rep3"}; 
+				macroName = "longit2Group3Rm";
 			end;
 		end;
 		else do;
@@ -281,15 +230,11 @@ proc iml;
 				macroName = "longit4Group5Rm";
 			end;
 			else do;
-				XFullColNames={"subjectId" "trt1_rep1" "trt1_rep2" "trt1_rep3" "trt1_rep4" "trt1_rep5"
-				"trt1_rep6" "trt1_rep7" "trt1_rep8" "trt1_rep9" "trt1_rep10"
-				"trt2_rep1" "trt2_rep2" "trt2_rep3" "trt2_rep4" "trt2_rep5"
-				"trt2_rep6" "trt2_rep7" "trt2_rep8" "trt2_rep9" "trt2_rep10"
-				"trt3_rep1" "trt3_rep2" "trt3_rep3" "trt3_rep4" "trt3_rep5"
-				"trt3_rep6" "trt3_rep7" "trt3_rep8" "trt3_rep9" "trt3_rep10"
-				"trt4_rep1" "trt4_rep2" "trt4_rep3" "trt4_rep4" "trt4_rep5" 
-				"trt4_rep6" "trt4_rep7" "trt4_rep8" "trt4_rep9" "trt4_rep10"}; 
-				macroName = "longit4Group10Rm";
+				XFullColNames={"subjectId" "trt1_rep1" "trt1_rep2" "trt1_rep3" 
+				"trt2_rep1" "trt2_rep2" "trt2_rep3" 
+				"trt3_rep1" "trt3_rep2" "trt3_rep3" 
+				"trt4_rep1" "trt4_rep2" "trt4_rep3" }; 
+				macroName = "longit4Group3Rm";
 			end;
 		end;
 		XModelColNames = XFullColNames[1,(2:NCOL(XFullColNames))];
@@ -298,13 +243,13 @@ proc iml;
 
 		print idList;
 		X = idList || X ;
-		print X;
-		print SigmaS;
+		*print X;
+		*print SigmaS;
 		
 		simlib= "outData";
 		simprefix = "longitExamples";
 
-		blockSize = 1000;
+		blockSize = 500;
 		*if clusterSize > 50 then blockSize = 100;
 		call calculateEmpiricalPowerConditional(10000, blockSize,  
 		  simlib, simprefix, macroName,
