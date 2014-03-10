@@ -15,7 +15,7 @@
 	proc mixed data=&datasetName;
 		model y = trt1_rep1 trt1_rep2 trt1_rep3 trt1_rep4 trt1_rep5
 				trt2_rep1 trt2_rep2 trt2_rep3 trt2_rep4 trt2_rep5 / noint solution ddfm=kr;
-		repeated / subject=subjectID type=UN;
+		repeated / subject=subjectID type=AR(1);
 		by setID;
 		contrast "time by treatment"
 			trt1_rep1 1 trt1_rep2 -1 trt2_rep1 -1 trt2_rep2 1,
@@ -30,7 +30,7 @@
 	proc mixed data=&datasetName;
 		model y = trt1_rep1 trt1_rep2 trt1_rep3 
 				trt2_rep1 trt2_rep2 trt2_rep3 / noint solution ddfm=kr;
-		repeated / subject=subjectID type=UN;
+		repeated / subject=subjectID type=AR(1);
 		by setID;
 		contrast "time by treatment"
 			trt1_rep1 1 trt1_rep2 -1 trt2_rep1 -1 trt2_rep2 1,
@@ -46,7 +46,7 @@
 				trt3_rep1 trt3_rep2 trt3_rep3 trt3_rep4 trt3_rep5 
 				trt4_rep1 trt4_rep2 trt4_rep3 trt4_rep4 trt4_rep5 
 				/ noint solution ddfm=kr;
-		repeated / subject=subjectID type=UN;
+		repeated / subject=subjectID type=AR(1);
 		by setID;
 		contrast "time by treatment"
 			trt1_rep1 1 trt1_rep2 -1 trt2_rep1 -1 trt2_rep2 1,
@@ -73,7 +73,7 @@
 				trt3_rep1 trt3_rep2 trt3_rep3 
 				trt4_rep1 trt4_rep2 trt4_rep3 
 				/ noint solution ddfm=kr;
-		repeated / subject=subjectID type=UN;
+		repeated / subject=subjectID type=AR(1);
 		by setID;
 		contrast "time by treatment"
 			trt1_rep1 1 trt1_rep2 -1 trt2_rep1 -1 trt2_rep2 1,
@@ -97,8 +97,7 @@ proc import datafile="&OUT_DATA_DIR\longitudinalParams.csv"
 run;
 
 data longitudinalParams;
-	set longitudinalParams;
-	where maxObservations = 5;
+	set longitudinalParams(obs=6);
 run;
 
 /*
@@ -125,87 +124,97 @@ proc iml;
 		matrix = lear;
 	finish;
 
+	* generate an autoregressive covariance matrix;
+	start ar1Matrix(size, rho, matrix);
+		dmin=1;
+		dmax=size-1;
+		ar1 = I(size);
+		sizeMinus1 = size-1;
+		do r=1 to sizeMinus1;
+			rPlus1 = r + 1;
+			do c=rPlus1 to size;
+				value = rho**(c-r);
+		    	ar1[r,c] = value;
+		    	ar1[c,r] = value;
+			end;
+		end;
+		matrix = ar1;
+	finish;
+
 	* wrapper function to generate appropriate X and Sigma;
-	start longitEmpiricalPower(monotone, maxObservations, perGroupN, 
-							   rho, delta, sigmaSq, numGroups, betaScale,
+	start longitEmpiricalPower(monotone, maxObservations, missingPercent,
+								perGroupN, rho, delta, sigmaSq, numGroups, betaScale,
 								empiricalPower);
 
 		* Build the sigma matrix for a complete case;
-		call learMatrix(maxObservations, rho, delta, SigmaComplete);
+		call ar1Matrix(maxObservations, rho, SigmaComplete);
 		SigmaComplete = SigmaComplete # sigmaSq;
+
+		* determine the number of complete and missing cases;
+		numComplete = floor(perGroupN * (1 - missingPercent));
+		numIncomplete = perGroupN - numComplete;
 
 		* build the design matrix and sigma matrices;
 		isu = 1;
 		do grp=1 to numgroups;
 			designBetween = I(numGroups)[grp,];
 
-			if monotone = 1 then do;
-      			* monotone dropout pattern - once missing, never come back;
-				* 50% complete, 30% missing last observation, 20% missing last 2;
-			    min1 = maxObservations - 1;
-				min2 = maxObservations - 2;
-				* calculate number of ISUs with each pattern;
-				numComplete = floor(0.5 * perGroupN);
-				numMin1 = floor(0.3 * perGroupN);
-				numMin2 = floor(0.2 * perGroupN);
+			if numIncomplete = 0 then do;
 				* add design matrices for each isu;
-				X = X // (J(numComplete,1,1) @ (designBetween @ I(maxObservations))) 
-					// (J(numMin1,1,1) @ (designBetween @ I(maxObservations)[(1:min1),])) 
-					// (J(numMin2,1,1) @ (designBetween @ I(maxObservations)[(1:min2),]));
+				X = X // (J(numComplete,1,1) @ (designBetween @ I(maxObservations)));
 				* add sigma matrices for each ISU;
-				SigmaGroupComplete = I(numComplete) @ SigmaComplete;
-				SigmaGroupMin1 = I(numMin1) @ (I(maxObservations)[(1:min1),] * SigmaComplete * T(I(maxObservations)[(1:min1),]));
-				SigmaGroupMin2 = I(numMin2) @ (I(maxObservations)[(1:min2),] * SigmaComplete * T(I(maxObservations)[(1:min2),]));
-				SigmaGroup = block(SigmaGroupComplete, SigmaGroupMin1, SigmaGroupMin2);
+				SigmaGroup = I(numComplete) @ SigmaComplete;
 
 				if isu = 1 then SigmaS = SigmaGroup;
 				else SigmaS = block(SigmaS, SigmaGroup);
 
 			end;
 			else do;
-				* Non-monotone dropout pattern ;
-				* - delete 2nd observations in 30%, delete 3rd in 20%;
-				* - if max observations > 3, also delete 4th;
+				if monotone = 1 then do;
+	      			* monotone dropout pattern - once missing, never come back;
+					* 50% complete, 30% missing last observation, 20% missing last 2;
+					minObs = maxObservations - 2;
+					* add design matrices for each isu;
+					X = X // (J(numComplete,1,1) @ (designBetween @ I(maxObservations))) 
+						// (J(numIncomplete,1,1) @ (designBetween @ I(maxObservations)[(1:minObs),]));
+					* add sigma matrices for each ISU;
+					SigmaGroupComplete = I(numComplete) @ SigmaComplete;
+					SigmaGroupIncomplete = I(numIncomplete) @ 
+						(I(maxObservations)[(1:minObs),] * SigmaComplete * T(I(maxObservations)[(1:minObs),]));
+					SigmaGroup = block(SigmaGroupComplete, SigmaGroupIncomplete);
 
-				* calculate number of ISUs with each pattern;
-				numComplete = floor(0.5 * perGroupN);
-				numMin1 = floor(0.3 * perGroupN);
-				numMin2 = floor(0.2 * perGroupN);
+					if isu = 1 then SigmaS = SigmaGroup;
+					else SigmaS = block(SigmaS, SigmaGroup);
 
-				* create non-monotone missing patterns;
-				if maxObservations = 3 then do;
-					min1Pattern = {1 3};
-					min2Pattern = {1 2};
 				end;
 				else do;
-					min1Pattern = {1 3 5};
-					min2Pattern = {1 2 5};
-				end;
-				min1 = NCOL(min1Pattern);
-				min2 = NCOL(min2Pattern);
-				
-				* add design matrices for each isu;
-				X = X // (J(numComplete,1,1) @ (designBetween @ I(maxObservations))) 
-					// (J(numMin1,1,1) @ (designBetween @ I(maxObservations)[min1Pattern,])) 
-					// (J(numMin2,1,1) @ (designBetween @ I(maxObservations)[min2Pattern,]));
-				* add sigma matrices for each ISU;
-				SigmaGroupComplete = I(numComplete) @ SigmaComplete;
-				SigmaGroupMin1 = I(numMin1) @ (I(maxObservations)[min1Pattern,] * SigmaComplete * T(I(maxObservations)[min1Pattern,]));
-				SigmaGroupMin2 = I(numMin2) @ (I(maxObservations)[min2Pattern,] * SigmaComplete * T(I(maxObservations)[min2Pattern,]));
-				SigmaGroup = block(SigmaGroupComplete, SigmaGroupMin1, SigmaGroupMin2);
-				* concatenate onto full sigma matrix;
-				if isu = 1 then SigmaS = SigmaGroup;
-				else SigmaS = block(SigmaS, SigmaGroup);
+					* Non-monotone dropout pattern ;
+					* - delete 2nd and 4th observations
 
+					* create non-monotone missing patterns;
+					missingPattern = {1 3 5}; 
+					minObs = 3;
+					* add design matrices for each isu;
+					X = X // (J(numComplete,1,1) @ (designBetween @ I(maxObservations)))  
+						// (J(numIncomplete,1,1) @ (designBetween @ I(maxObservations)[missingPattern,]));
+					* add sigma matrices for each ISU;
+					SigmaGroupComplete = I(numComplete) @ SigmaComplete;
+					SigmaGroupIncomplete = I(numIncomplete) @ (I(maxObservations)[missingPattern,] * SigmaComplete * T(I(maxObservations)[missingPattern,]));
+					SigmaGroup = block(SigmaGroupComplete, SigmaGroupIncomplete);
+					* concatenate onto full sigma matrix;
+					if isu = 1 then SigmaS = SigmaGroup;
+					else SigmaS = block(SigmaS, SigmaGroup);
+
+				end;
 			end;
 
 			* create subject IDs;
 			idList = idList // (T(isu:isu+numComplete-1) @ J(maxObservations,1,1));
 			isu = isu + numComplete + 1;
-			idList = idList // (T(isu:isu+numMin1-1) @ J(min1,1,1));
-			isu = isu + numMin1 + 1;
-			idList = idList // (T(isu:isu+numMin2-1) @ J(min2,1,1));
-			isu = isu + numMin2 + 1;
+			if numIncomplete > 0 then do;
+				idList = idList // (T(isu:isu+numIncomplete-1) @ J(minObs,1,1));
+				isu = isu + numIncomplete + 1;
+			end;
 		end;
 
 		* build column names for X, and build beta;
@@ -243,8 +252,8 @@ proc iml;
 
 		print idList;
 		X = idList || X ;
-		*print X;
-		*print SigmaS;
+		print X;
+		print SigmaS;
 		
 		simlib= "outData";
 		simprefix = "longitExamples";
@@ -262,7 +271,7 @@ proc iml;
 	finish;
 
 	* load the parameter data into a matrix;
-	paramNames={"monotone" "maxObservations" "perGroupN" "targetPower" 
+	paramNames={"monotone" "maxObservations" "missingPercent" "perGroupN" "targetPower" 
 				"rho" "delta" "sigmaSq" "numGroups" "betaScale"};
 	use longitudinalParams;
   	read all into paramList[colname=paramNames];
@@ -272,6 +281,7 @@ proc iml;
 
 		call longitEmpiricalPower(paramList[i,"monotone"],
 							paramList[i,"maxObservations"], 
+							paramList[i,"missingPercent"],
 							paramList[i,"perGroupN"], 
 							paramList[i,"rho"], 
 							paramList[i,"delta"], 
