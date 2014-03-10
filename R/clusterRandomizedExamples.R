@@ -110,7 +110,7 @@ generateDesigns.clusterRandomized = function() {
   # total clusters per treatment group
   perGroupNList = c(10, 40)
   # total participants per cluster
-  clusterSizeList = c(5, 50, 100)
+  clusterSizeList = c(5, 50)
   # percent missing (in half of the clusters)
   missingPercentList = c(0, 0.20, 0.40)
   # in all cases, we select the scale factor 
@@ -165,7 +165,7 @@ calculatePower.clusterRandomized = function(runEmpirical=FALSE) {
     # requires SAS installation
   }
   
-  empiricalFile = dataFile("clusterRandomizedEmpirical.csv");
+  empiricalFile = dataFile("clusterRandomizedEmpiricalFinal.csv");
   if (!file.exists(empiricalFile)) {
     stop(paste(c("Missing empirical power file: ", empiricalFile), collapse=""))
   }
@@ -174,9 +174,9 @@ calculatePower.clusterRandomized = function(runEmpirical=FALSE) {
   
   # load the designs and calculate power
   load(dataFile("clusterRandomizedDesigns.RData"))
-  for(i in 1:length(powerResults$targetPower)) {
-    
-  }
+  approxPowerList = sapply(longitudinalDesignList, function(designAndGlh) {
+    return(mixedPower(designAndGlh[[1]], designAndGlh[[2]]))
+  })
   
   # combine with the empirical set and save to disk
   powerResults$approxPower = approxPowerList
@@ -190,8 +190,10 @@ calculatePower.clusterRandomized = function(runEmpirical=FALSE) {
 summarizeResults.clusterRandomized = function() {
   powerResults = read.csv(dataFile("clusterRandomizedResults.csv"))
   
-  
+  powerResults$deviation = powerResults$approxPower - powerResults$empiricalPower
+  boxplot(powerResults$deviation)
+  range(powerResults$deviation)
 }
 
 
-#generateDesigns.clusterRandomized()
+generateDesigns.clusterRandomized()

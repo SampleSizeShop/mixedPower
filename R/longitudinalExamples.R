@@ -161,17 +161,19 @@ generateLongitudinalDesign = function(params) {
   }
   
   # build the design
+  beta = matrix(c(1,rep(0,(params$maxObservations-1)),
+                  rep(0,params$maxObservations*(params$numGroups-1))))
   design = new("design.mixed", name = name, description = description,
                xPatternList = patternList,
-               beta = matrix(c(1,rep(0,(params$maxObservations-1)),rep(0,params$maxObservations*(params$numGroups-1)))),
-               Sigma = params$sigmaSq * learMatrix(params$maxObservations,params$rho,params$delta)
+               beta = beta,
+               Sigma = params$sigmaSq * 
+                 learMatrix(params$maxObservations,params$rho,params$delta)
   )
   # get the appropriate hypothesis
   glh = getGlh(params$numGroups, params$maxObservations)
   # update the beta scale
   betaScale = getBetaScaleByPower(design, glh, targetPower=params$targetPower)  
-  design@beta = matrix(c(1,rep(0,params$numGroups-1))) * betaScale  
-  
+  design@beta = beta * betaScale
   return(design)
   
 }
@@ -254,13 +256,13 @@ calculatePower.longitudinal = function(runEmpirical=FALSE) {
   
   # load the designs and calculate power
   load(dataFile("longitudinalDesigns.RData"))
-  for(i in 1:length(powerResults$targetPower)) {
-    
-  }
+  approxPowerList = sapply(longitudinalDesignList, function(designAndGlh) {
+    return(mixedPower(designAndGlh[[1]], designAndGlh[[2]]))
+  })
   
   # combine with the empirical set and save to disk
   powerResults$approxPower = approxPowerList
-  write.csv(dataFile("longitudinalResults.csv"))
+  write.csv(powerResults, file=dataFile("longitudinalResults.csv"))
   
 }
 
@@ -270,9 +272,11 @@ calculatePower.longitudinal = function(runEmpirical=FALSE) {
 summarizeResults.longitudinal = function() {
   powerResults = read.csv(dataFile("longitudinalResults.csv"))
   
-  
+  powerResults$deviation = powerResults$approxPower - powerResults$empiricalPower
+  boxplot(powerResults$deviation ~ powerResults$monotone)
+  range(powerResults$deviation)
 }
 
 
 generateDesigns.longitudinal()
-
+summarizeResults.longitudinal()
