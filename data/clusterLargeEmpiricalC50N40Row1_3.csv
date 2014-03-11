@@ -1,0 +1,4 @@
+missingPercent,clusterSize,perGroupN,targetPower,sigmaSq,icc,numGroups,betaScale,empiricalPower
+0,50,40,0.2,2,0.04,2,0.0857960488,0.2041
+0.2,50,40,0.2,2,0.04,2,0.0874520424,0.1931
+0.4,50,40,0.2,2,0.04,2,0.0898693686,0.1948
