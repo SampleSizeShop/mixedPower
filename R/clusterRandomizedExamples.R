@@ -174,10 +174,10 @@ calculatePower.clusterRandomized = function(runEmpirical=FALSE) {
   
   # load the designs and calculate power
   load(dataFile("clusterRandomizedDesigns.RData"))
-  approxPowerList = sapply(longitudinalDesignList, function(designAndGlh) {
+  approxPowerList = sapply(clusterDesignList, function(designAndGlh) {
     return(mixedPower(designAndGlh[[1]], designAndGlh[[2]]))
   })
-  
+
   # combine with the empirical set and save to disk
   powerResults$approxPower = approxPowerList
   write.csv(dataFile("clusterRandomizedResults.csv"))
@@ -190,10 +190,18 @@ calculatePower.clusterRandomized = function(runEmpirical=FALSE) {
 summarizeResults.clusterRandomized = function() {
   powerResults = read.csv(dataFile("clusterRandomizedResults.csv"))
   
+  tmp = powerResults[powerResults$clusterSize==5,]
+  tmp$approxPower = approxPowerList[c(1:3,7:9,13:15,19:21,25:27,
+                                      31:33,37:39,43:45,49:51,
+                                      55:57,61:63,67:69)]
+  tmp$deviation = tmp$approxPower - tmp$empiricalPower
+  boxplot(tmp$deviation ~ tmp$missingPercent, ylim=c(-0.1, 0.1))
+  range(tmp$deviation)
+  
   powerResults$deviation = powerResults$approxPower - powerResults$empiricalPower
   boxplot(powerResults$deviation)
   range(powerResults$deviation)
 }
 
 
-generateDesigns.clusterRandomized()
+#generateDesigns.clusterRandomized()
