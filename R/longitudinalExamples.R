@@ -51,10 +51,28 @@ learMatrix = function(size, rho, delta) {
 }
 
 #
+# Generate an auto-regressive covariance matrix
+#
+ar1Matrix = function(size, rho) {
+  dmin=1
+  dmax=size-1
+  ar1 = diag(size)
+  for(r in 1:(size-1)) {
+    for(c in (r+1):size) {
+      value = rho^(c-r)
+      ar1[r,c] = value
+      ar1[c,r] = value
+    }
+  }
+  return(ar1)
+}
+
+#
 # Identify the beta scale such that mixedPower returns the 
 # requested target power
 #
-getBetaScaleByPower <- function(design, glh, targetPower=0.90, lower=0.0001, upper=1000) {
+getBetaScaleByPower <- function(design, glh, targetPower=0.90, 
+                                lower=0.0001, upper=1000) {
   betaScale = uniroot(function(x) {
     design@beta = design@beta * x
     return(mixedPower(design, glh) - targetPower)
@@ -84,9 +102,10 @@ getGlh = function(numGroups, maxObs) {
 generateLongitudinalDesign = function(params) {
   
   name = "longitudinal"
-  description = paste(c(params$numGroups, " group longitudinal design, test of time by treatment interaction. ",
+  description = paste(c(params$numGroups, 
+                        " group longitudinal design, test of time by treatment interaction. ",
                         "Per group N = ", params$perGroupN, 
-                        ", max observations = ", params$maxObservations,
+                        ", percent missing = ", params$missingPercent,
                         ", monotone missing? = ", (params$monotone==1),
                         ", target power = ", params$targetPower), collapse="")
 
@@ -98,66 +117,54 @@ generateLongitudinalDesign = function(params) {
     # between effects design matrix
     designBetween = matrix(diag(params$numGroups)[grp,], nrow=1)
     
-    if (params$monotone) {
+    # calculate the number of ISUs with missing data
+    numComplete = floor(params$perGroupN * (1-params$missingPercent))
+    numIncomplete = params$perGroupN - numComplete
+    
+    # build missing data patterns
+    if (numIncomplete == 0) {
+      # complete case
+      patternList[[pattern]] = 
+        new("missingDataPattern", group=grp, observations=1:params$maxObservations, 
+            designMatrix = (designBetween %x% diag(params$maxObservations)),
+            size=numComplete)
+    } else if (params$monotone) {
       ## monotone dropout pattern - once missing, never come back
       # complete case
       patternList[[pattern]] = 
         new("missingDataPattern", group=grp, observations=1:params$maxObservations, 
             designMatrix = (designBetween %x% diag(params$maxObservations)),
-            size=floor(params$perGroupN*0.5))
-      # missing last observation
-      missingPattern1 = 1:(params$maxObservations-1)
-      patternList[[pattern+1]] = 
-        new("missingDataPattern", group=grp, observations=missingPattern1, 
-            designMatrix = (designBetween %x% 
-                              matrix(diag(params$maxObservations)[missingPattern1,], 
-                                     nrow=length(missingPattern1))),
-            size=floor(params$perGroupN*0.3))
+            size=numComplete)
+      pattern = pattern + 1
       # missing last 2 observations
       missingPattern2 = 1:(params$maxObservations-2)
-      patternList[[pattern+2]] = 
+      patternList[[pattern]] = 
         new("missingDataPattern", group=grp, observations=missingPattern2, 
             designMatrix = (designBetween %x% 
                               matrix(diag(params$maxObservations)[missingPattern2,], 
                                      nrow=length(missingPattern2))),
-            size=floor(params$perGroupN*0.2))
+            size=numIncomplete)
 
     } else {
       ## Non-monotone dropout pattern 
-      ## - delete 2nd observations in 30%, delete 3rd in 20%
-      ## - if max observations > 3, also delete 4th
+      ## - delete observations 2 and 4
       # complete case
       patternList[[pattern]] = 
         new("missingDataPattern", group=grp, observations=1:params$maxObservations, 
             designMatrix = (designBetween %x% diag(params$maxObservations)),
-            size=floor(params$perGroupN*0.5))
-      # missing 2nd (and 4th) observation(s)
-      if (params$maxObservations == 3) {
-        missingPattern1 = c(1,3)
-      } else {
-        missingPattern1 = c(1,3,5:params$maxObservations)
-      }
-      patternList[[pattern+1]] = 
-        new("missingDataPattern", group=grp, observations=missingPattern1, 
-            designMatrix = (designBetween %x% 
-                              matrix(diag(params$maxObservations)[missingPattern1,], 
-                                     nrow=length(missingPattern1))),
-            size=floor(params$perGroupN*0.3))
-      # missing 3rd (and 4th) observation(s)
-      if (params$maxObservations == 3) {
-        missingPattern2 = c(1,2)
-      } else {
-        missingPattern2 = c(1,2,5:params$maxObservations)
-      }
-      patternList[[pattern+2]] = 
-        new("missingDataPattern", group=grp, observations=missingPattern2, 
-            designMatrix = (designBetween %x% 
-                              matrix(diag(params$maxObservations)[missingPattern2,], 
-                                     nrow=length(missingPattern2))),
-            size=floor(params$perGroupN*0.2))
+            size=numComplete)
+      pattern = pattern + 1
       
+      # missing 2nd (and 4th) observation(s)
+      incompleteObs = c(1,3,5)
+      patternList[[pattern]] = 
+        new("missingDataPattern", group=grp, observations=incompleteObs, 
+            designMatrix = (designBetween %x% 
+                              matrix(diag(params$maxObservations)[incompleteObs,], 
+                                     nrow=length(incompleteObs))),
+            size=numIncomplete)
     }
-    pattern = pattern + 3
+    pattern = pattern + 1
   }
   
   # build the design
@@ -167,7 +174,7 @@ generateLongitudinalDesign = function(params) {
                xPatternList = patternList,
                beta = beta,
                Sigma = params$sigmaSq * 
-                 learMatrix(params$maxObservations,params$rho,params$delta)
+                 ar1Matrix(params$maxObservations,params$rho)
   )
   # get the appropriate hypothesis
   glh = getGlh(params$numGroups, params$maxObservations)
@@ -188,23 +195,26 @@ generateDesigns.longitudinal = function() {
   # number of treatment groups
   numGroupsList = c(2, 4)
   # total ISUs per treatment group
-  perGroupNList = c(15, 40)
+  perGroupNList = c(50)
   # max observations for each participants
-  maxObservationsList = c(3,5)
+  maxObservationsList = c(5)
   # missing data pattern (either monotone or non-monotone)
   monotoneList = c(1, 0)
+  # percent missing
+  missingPercentList = c(0, 0.2, 0.4)
   # in all cases, we select the scale factor 
   # for beta to achieve the following power
   targetPowerList = c(0.2, 0.5, 0.8)
   # Lear parameters
   rhoList = c(0.4)
-  deltaList = c(0.5)
+  deltaList = c(1)
   # sigma squared
   sigmaSqList = c(1)
   
   # generate parameters
   paramList = list(monotone=monotoneList, 
                    maxObservations=maxObservationsList,
+                   missingPercent=missingPercentList,
                    perGroupN=perGroupNList, 
                    targetPower=targetPowerList,
                    rho=rhoList,
@@ -273,7 +283,7 @@ summarizeResults.longitudinal = function() {
   powerResults = read.csv(dataFile("longitudinalResults.csv"))
   
   powerResults$deviation = powerResults$approxPower - powerResults$empiricalPower
-  boxplot(powerResults$deviation ~ powerResults$monotone)
+  boxplot(powerResults$deviation ~ powerResults$monotone, ylim=c(-0.1, 0.1))
   range(powerResults$deviation)
 }
 

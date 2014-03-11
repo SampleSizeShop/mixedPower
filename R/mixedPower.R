@@ -107,11 +107,11 @@ setClass (
 #
 getKRParams = function(a, moments) {
   # calculate rho
-  rho = moments$var.alt / (2*moments$mu.null^2) 
+  rho = moments$var.alt / (2*((moments$mu.null)^2)) 
   # calculate noncentrality parameter
   omega = a*((moments$mu.alt/moments$mu.null)-1)
   # denominator degrees of freedom
-  ddf = 4 + (2*(a + 2*omega) + (a + omega)^2)/(rho*a^2 - a - 2*omega)
+  ddf = 4 + (2*(a + 2*omega) + (a + omega)^2)/(rho*(a^2) - a - 2*omega)
   # scale factor for KR adjustment
   lambda = ddf / ((ddf - 2)*moments$mu.null)
   
@@ -212,7 +212,7 @@ getWaldMoments = function(design, glh, homoscedastic=TRUE) {
     tmpOmega = t(thetaDiffHat.mu) %*% precision %*% thetaDiffHat.mu
     deltaStar = (
       ((tmpOmega * sum(diag(covarRatio))) + 2 * tmpOmega^2) / 
-        (sum(diag(covarRatio))^2 + 
+        (sum(diag(covarRatio %*% covarRatio)) + 
            2 * (t(thetaDiffHat.mu) %*% precision %*% thetaDiffHat.Sigma %*% 
                   precision %*% thetaDiffHat.mu))
     )
@@ -254,7 +254,10 @@ mixedPower = function(design, glh, homoscedastic=TRUE) {
   a = nrow(glh@fixedContrast)
   # get the critical F
   Fcrit = qf(1-glh@alpha,a,params$ddf)
-  
+#   cat("mu=(", moments$mu.null, ", ", moments$mu.alt, ")",
+#       Fcrit, " ", params$lambda, "\n")
+#   cat("params(l=", params$lambda, ", ddf=", params$ddf, 
+#       ", omega=", params$omega, ")\n")
   # calculate power;
   power = 1 - pf(Fcrit, a, params$ddf, params$omega);
   
