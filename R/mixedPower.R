@@ -155,15 +155,16 @@ getWaldMoments = function(design, glh, homoscedastic=TRUE) {
     # get sigma matrix for this pattern
     deletionMatrix = matrix(diag(maxObs)[pattern@observations,], 
                             nrow=length(pattern@observations))
-    SigmaD = deletionMatrix %*% design@Sigma %*% t(deletionMatrix)
-    
+    SigmaD = (deletionMatrix %*% design@Sigma %*% t(deletionMatrix))
+              
     # add to the list
     for(j in 1:pattern@size) {
       designMatrixList[[isu]] = pattern@designMatrix
+      df = as.numeric(patternDfList[paste(sort(pattern@observations), collapse="_")]) - numGroups
       invWishartList[[isu]] = 
         invert(new("wishart", 
-                   df=as.numeric(patternDfList[paste(sort(pattern@observations), collapse="_")]),
-                   covariance=SigmaD))
+                   df=df,
+                   covariance=(SigmaD/df)))
       SigmaList[[isu]] = SigmaD
       isu = isu + 1
     }
@@ -220,7 +221,7 @@ getWaldMoments = function(design, glh, homoscedastic=TRUE) {
     lambdaStar = tmpOmega / deltaStar
     
     ndf = nStar
-    ddf = distCXtSigmaInvXInvCt@df
+    ddf = distCXtSigmaInvXInvCt@df + a - 1
     omega = deltaStar
     
     Fscale = sum(diag(covarRatio))/((ddf) * a)
