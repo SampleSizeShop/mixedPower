@@ -283,8 +283,23 @@ summarizeResults.longitudinal = function() {
   powerResults = read.csv(dataFile("longitudinalResults.csv"))
   
   powerResults$deviation = powerResults$approxPower - powerResults$empiricalPower
-  boxplot(powerResults$deviation ~ powerResults$monotone, ylim=c(-0.1, 0.1))
+  boxplot(powerResults$deviation, ylim=c(-0.1, 0.1))
+  boxplot(powerResults$deviation ~ powerResults$numGroups, ylim=c(-0.1, 0.1))
   range(powerResults$deviation)
+  
+  pdf(file="../inst/figures/LongitudinalPowerBoxPlots.pdf", height=5)
+  par(mfrow=c(1,3), oma=c(5,5,5,5), mar=c(5,2,1,1))
+  boxplot(powerResults$deviation ~ powerResults$numGroups, ylim=c(-0.1,0.1),
+          xlab="Number of Treatment Groups")
+  abline(h=0, lty=3)
+  boxplot(powerResults$deviation ~ powerResults$monotone, ylim=c(-0.1,0.1),
+          xlab="Missing Data Pattern")
+  abline(h=0, lty=3)
+  boxplot(powerResults$deviation ~ powerResults$missingPercent, ylim=c(-0.1,0.1),
+          xlab="Number of Incomplete Sampling Units")
+  abline(h=0, lty=3)
+  
+  dev.off()
 }
 
 

@@ -165,7 +165,7 @@ calculatePower.clusterRandomized = function(runEmpirical=FALSE) {
     # requires SAS installation
   }
   
-  empiricalFile = dataFile("clusterRandomizedEmpiricalFinal.csv");
+  empiricalFile = dataFile("clusterRandomizedEmpirical.csv");
   if (!file.exists(empiricalFile)) {
     stop(paste(c("Missing empirical power file: ", empiricalFile), collapse=""))
   }
@@ -180,7 +180,7 @@ calculatePower.clusterRandomized = function(runEmpirical=FALSE) {
 
   # combine with the empirical set and save to disk
   powerResults$approxPower = approxPowerList
-  write.csv(dataFile("clusterRandomizedResults.csv"))
+  write.csv(powerResults, dataFile("clusterRandomizedResults.csv"))
   
 }
 
@@ -190,17 +190,29 @@ calculatePower.clusterRandomized = function(runEmpirical=FALSE) {
 summarizeResults.clusterRandomized = function() {
   powerResults = read.csv(dataFile("clusterRandomizedResults.csv"))
   
-  tmp = powerResults[powerResults$clusterSize==5,]
-  tmp$approxPower = approxPowerList[c(1:3,7:9,13:15,19:21,25:27,
-                                      31:33,37:39,43:45,49:51,
-                                      55:57,61:63,67:69)]
-  tmp$deviation = tmp$approxPower - tmp$empiricalPower
-  boxplot(tmp$deviation ~ tmp$missingPercent, ylim=c(-0.1, 0.1))
-  range(tmp$deviation)
+  # remove designs which violate assumption of Nd > q + pd + 1
+  powerResults = powerResults[powerResults$clusterSize != 50 | 
+                                powerResults$perGroupN !=10,]
+  powerResults = powerResults[powerResults$clusterSize != 5 | 
+                                powerResults$numGroups != 2,]
   
   powerResults$deviation = powerResults$approxPower - powerResults$empiricalPower
-  boxplot(powerResults$deviation)
+  mean(powerResults$deviation)
   range(powerResults$deviation)
+  
+  pdf(file="../inst/figures/ClusterPowerBoxPlots.pdf", height=5)
+  par(mfrow=c(1,3), oma=c(5,5,5,5), mar=c(5,2,1,1))
+  boxplot(powerResults$deviation ~ powerResults$numGroups, ylim=c(-0.1,0.1),
+          xlab="Number of Treatment Groups")
+  abline(h=0, lty=3)
+  boxplot(powerResults$deviation ~ powerResults$clusterSize, ylim=c(-0.1,0.1),
+          xlab="Cluster Size")
+  abline(h=0, lty=3)
+  boxplot(powerResults$deviation ~ powerResults$missingPercent, ylim=c(-0.1,0.1),
+          xlab="Percent Missing (half of clusters)")
+  abline(h=0, lty=3)  
+  dev.off()
+  
 }
 
 
