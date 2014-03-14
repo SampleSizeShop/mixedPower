@@ -203,13 +203,18 @@ summarizeResults.clusterRandomized = function() {
   pdf(file="../inst/figures/ClusterPowerBoxPlots.pdf", height=5)
   par(mfrow=c(1,3), oma=c(5,5,5,5), mar=c(5,2,1,1))
   boxplot(powerResults$deviation ~ powerResults$numGroups, ylim=c(-0.1,0.1),
-          xlab="Number of Treatment Groups")
+          xlab="Total Treatment Groups")
   abline(h=0, lty=3)
   boxplot(powerResults$deviation ~ powerResults$clusterSize, ylim=c(-0.1,0.1),
           xlab="Cluster Size")
   abline(h=0, lty=3)
-  boxplot(powerResults$deviation ~ powerResults$missingPercent, ylim=c(-0.1,0.1),
-          xlab="Percent Missing (half of clusters)")
+  powerResults$ratio = factor(powerResults$missingPercent, 
+                                levels=c(0,0.2,0.4),
+                                labels=c("1", 
+                                         "0.8", 
+                                         "0.6"))
+  boxplot(powerResults$deviation ~ powerResults$ratio, ylim=c(-0.1,0.1),
+          xlab="Incomplete:complete cluster size")
   abline(h=0, lty=3)  
   dev.off()
   
