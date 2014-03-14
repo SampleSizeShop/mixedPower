@@ -285,6 +285,7 @@ summarizeResults.longitudinal = function() {
   powerResults$deviation = powerResults$approxPower - powerResults$empiricalPower
   boxplot(powerResults$deviation, ylim=c(-0.1, 0.1))
   boxplot(powerResults$deviation ~ powerResults$numGroups, ylim=c(-0.1, 0.1))
+  mean(powerResults$deviation)
   range(powerResults$deviation)
   
   pdf(file="../inst/figures/LongitudinalPowerBoxPlots.pdf", height=5)
