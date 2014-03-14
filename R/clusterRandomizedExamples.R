@@ -243,9 +243,9 @@ hennrikusExample = function() {
                  new("missingDataPattern", group=1, observations=1:incompleteSize, size=15,
                      designMatrix=clusterIncomplete %x% group2X)
                  ),
-               beta = matrix(c(2,0)),
-               Sigma = (5^2) * (0.08 * (matrix(rep(1,30)) %*% t(matrix(rep(1,30)))) + 
-                                           diag(30) * (1 - 0.08))
+               beta = matrix(c(25,0)),
+               Sigma = (125^2) * (0.04 * (matrix(rep(1,30)) %*% t(matrix(rep(1,30)))) + 
+                                           diag(30) * (1 - 0.04))
   )
   # get the appropriate hypothesis
   glh = new("glh.mixed",
