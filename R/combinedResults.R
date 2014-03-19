@@ -20,6 +20,7 @@ powerResults = data.frame(deviation=c(clusterResults$deviation,longitudinalResul
                    rep("All Designs", combinedResultsCount)))
 mean(combinedResults$deviation)
 range(combinedResults$deviation)
+fivenum(combinedResults$deviation)
 
 pdf(file="../inst/figures/PowerBoxPlot_overall.pdf")
 boxplot(powerResults$deviation ~ powerResults$group, ylim=c(-0.1,0.1))

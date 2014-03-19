@@ -16,7 +16,7 @@
 #  along with this program; if not, write to the Free Software
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #
-
+library(stats)
 #
 # Example power calculations for longitudinal designs
 # 
@@ -287,6 +287,7 @@ summarizeResults.longitudinal = function() {
   boxplot(powerResults$deviation ~ powerResults$numGroups, ylim=c(-0.1, 0.1))
   mean(powerResults$deviation)
   range(powerResults$deviation)
+  fivenum(powerResults$deviation)
   
   pdf(file="../inst/figures/LongitudinalPowerBoxPlots.pdf", height=5)
   par(mfrow=c(1,3), oma=c(5,5,5,5), mar=c(5,2,1,1))

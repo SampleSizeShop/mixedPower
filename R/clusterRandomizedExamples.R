@@ -199,6 +199,7 @@ summarizeResults.clusterRandomized = function() {
   powerResults$deviation = powerResults$approxPower - powerResults$empiricalPower
   mean(powerResults$deviation)
   range(powerResults$deviation)
+  fivenum(powerResults$deviation)
   
   pdf(file="../inst/figures/ClusterPowerBoxPlots.pdf", height=5)
   par(mfrow=c(1,3), oma=c(5,5,5,5), mar=c(5,2,1,1))
@@ -214,7 +215,7 @@ summarizeResults.clusterRandomized = function() {
                                          "0.8", 
                                          "0.6"))
   boxplot(powerResults$deviation ~ powerResults$ratio, ylim=c(-0.1,0.1),
-          xlab="Incomplete:complete cluster size")
+          xlab="Ratio of Incomplete to\ncomplete cluster sizes")
   abline(h=0, lty=3)  
   dev.off()
   
