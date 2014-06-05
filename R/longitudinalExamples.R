@@ -16,19 +16,37 @@
 #  along with this program; if not, write to the Free Software
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #
-library(stats)
-#
-# Example power calculations for longitudinal designs
-# 
-#
-source("../R/mixedPower.R")
 
-#
-# Convenience routine for generate paths
-# to files in the data directory
-#
-dataFile = function(filename) {
-  return(paste(c("../data/", filename), collapse=""))
+heterogeneousCS <- function(sigmaList,rho) {
+  Sigma = diag(c(1-0.04,rep(0.1-0.04, 4))) + matrix(c(rep(0.04,25)),nrow=5)
+  
+  
+  
+  sigmaList = c(1,rep(0.1,4))
+  Sigma = matrix(rep(0,25),nrow=5)
+  rho = 0.2
+  for(r in 1:nrow(Sigma)) {
+    for(c in 1:ncol(Sigma)) {
+      if (r==c) {
+        Sigma[r,c] = sigmaList[r]*sigmaList[c]
+      } else {
+        Sigma[r,c] = sigmaList[r]*sigmaList[c] * rho
+      }
+    }
+  }
+  
+  U = matrix(c(1,1,1,1,
+               -1,0,0,0,
+               0,-1,0,0,
+               0,0,-1,0,
+               0,0,0,-1
+  ), ncol=4,byrow=TRUE)
+  
+  sigStar = t(U) %*% Sigma %*% U
+  
+  eps = sum(diag(sigStar))^2 / (ncol(U)*sum(diag(sigStar %*% sigStar)))
+  
+  eps
 }
 
 #
@@ -195,9 +213,9 @@ generateDesigns.longitudinal = function() {
   # number of treatment groups
   numGroupsList = c(2, 4)
   # total ISUs per treatment group
-  perGroupNList = c(50)
+  perGroupNList = c(20, 50, 100)
   # max observations for each participants
-  maxObservationsList = c(5)
+  maxObservationsList = c(5, 10)
   # missing data pattern (either monotone or non-monotone)
   monotoneList = c(1, 0)
   # percent missing

@@ -1,0 +1,10 @@
+Package: mixedPower
+Type: Package
+Title: Calculate power for mixed models 
+Version: 1.0
+Date: 2013-08-14
+Author: Sarah Kreidler
+Maintainer: sarah.kreidler@ucdenver.edu
+Description: The mixedPower package calculates approximate power for 
+  longitudinal studies with and without missing data. 
+License: GPL v3
