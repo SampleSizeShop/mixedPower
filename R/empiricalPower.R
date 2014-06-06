@@ -4,9 +4,6 @@
 #
 # Generate SAS code for the R matrix
 #
-library(magic)
-library(Matrix)
-library(MASS)
 
 #
 # Build the stacked mixed model X matrix from the given design

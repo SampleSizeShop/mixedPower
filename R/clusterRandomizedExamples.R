@@ -18,12 +18,6 @@
 #
 
 #
-# Example power calculations for cluster randomized trials
-# with 4 treatments
-#
-source("../R/mixedPower.R")
-
-#
 # Convenience routine for generate paths
 # to files in the data directory
 #

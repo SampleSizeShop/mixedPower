@@ -10,95 +10,83 @@
 # 
 #
 #
-library(magic)
-library(invWishartSum)
-library(Matrix)
+
+
 #
-# Class which describes a specific data pattern
-# (either complete or with missing observations)
-# for a mixed model design
 #
-setClass(
-  "missingDataPattern",
-  representation (
-    group = "numeric",
-    observations = "numeric",
-    size = "numeric",
-    designMatrix = "matrix"
-    ),
-  prototype (
-    group = 1,
-    observations = c(1),
-    size = 10,
-    designMatrix = diag(1)
-    )  
-  ) 
+#
+mixedPower.stroup <- function(design, glh) {
+  # create an exemplary data set
   
-#
-# Mixed model design for use in power analysis
-#
-setClass (
-  "design.mixed",
-  representation ( name = "character",
-                   description = "character",
-                   xPatternList = "list",
-                   beta = "matrix",
-                   Sigma = "matrix"
-  ),
-  prototype ( name ="",
-              description ="",
-              xPatternList = c(
-                new("missingDataPattern", group=1, observations=c(1,2,3), size=20,
-                    designMatrix=matrix(cbind(diag(3), matrix(rep(0,9), nrow=3)))),
-                new("missingDataPattern", group=1, observations=c(1,2), size=20,
-                    designMatrix=matrix(cbind(diag(2), matrix(rep(0,6), nrow=2)))),
-                new("missingDataPattern", group=2, observations=c(1,2,3), size=20,
-                    designMatrix=matrix(cbind(matrix(rep(0,9), nrow=3), diag(3)))),
-                new("missingDataPattern", group=2, observations=c(1,2), size=15,
-                    designMatrix=matrix(cbind(matrix(rep(0,6), nrow=2), diag(2)))) 
-                ),
-              beta = matrix(c(1,1,1,0,0,0),ncol=1),
-              Sigma = matrix(c(1,0.3,0.3,0.3,1,0.3,0.3,0.3,1), nrow=3)
-  ),
-  validity = function(object) {
-    # TODO - check max observations. make sure no one has more listed
-    # also make sure all observations are in range
+  # write the exemplary data to disk
+  
+  # write the SAS code to fit the exemplary data and calculate power
+  
+  
+  # run the SAS code
+  
+  # read the resulting power result
+  
+  # cleanup the temporary files
+  
+  # return the power value
     
-    return(TRUE)
-  }
-)
+}
 
 #
-# glh
+# Helms power approximation for mixed models
 #
-# Class describing the general linear hypothesis
-# for fixed effects in the mixed model
-#
-setClass (
-  "glh.mixed",
-  representation ( alpha = "numeric",
-                   fixedContrast = "matrix",
-                   thetaNull = "matrix",
-                   test = "character"
-  ),
-  prototype ( alpha = 0.05,
-              fixedContrast = matrix(c(1/3,1/3,1/3,-1/3,-1/3,-1/3), nrow=1),
-              thetaNull = matrix(c(0)),
-              test = "Wald, KR ddf"
-  ),
-  validity = function(object) {
-    # make sure thetaNull conforms with the between and within contrasts
-    if (nrow(object@fixedContrast) != nrow(object@thetaNull)) {
-      stop("The number of rows in the between contrast must match the number of rows of thetaNull")
-    }
-    if (ncol(object@thetaNull) > 1) {
-      stop("theta null must be a vector")
-    }
+mixedPower.helms = function(design, glh) {
+  
+  # get the max number of planned observations 
+  maxObs = nrow(design@Sigma)
+  
+  designMatrixList = list()
+  SigmaList = list()
+  isu = 1
+  for(i in 1:length(design@xPatternList)) {
+    pattern = design@xPatternList[[i]]
+    # get sigma matrix for this pattern
+    deletionMatrix = matrix(diag(maxObs)[pattern@observations,], 
+                            nrow=length(pattern@observations))
+    SigmaD = (deletionMatrix %*% design@Sigma %*% t(deletionMatrix))
     
-    return(TRUE)
+    # add to the list
+    for(j in 1:pattern@size) {
+      designMatrixList[[isu]] = pattern@designMatrix
+      SigmaList[[isu]] = SigmaD
+      isu = isu + 1
+    }
   }
-)
-
+  
+  # calculate the approximate covariance of thetaDiff = C*beta-thetaNull
+  sumXtSigmaInvX = Reduce("+", lapply(1:length(designMatrixList), function(isu) {
+    return(t(designMatrixList[[isu]]) %*% solve(SigmaList[[isu]]) %*% 
+             designMatrixList[[isu]])
+  }))
+  thetaDiffHat.Sigma = (glh@fixedContrast %*%
+                          solve(sumXtSigmaInvX) %*%
+                          t(glh@fixedContrast))
+  # calculate the mean
+  thetaDiffHat.mu = glh@fixedContrast %*% design@beta - glh@thetaNull
+  omega = t(thetaDiffHat.mu) %*% solve(thetaDiffHat.Sigma) %*% thetaDiffHat.mu
+  
+  # numerator degrees of freedom
+  a = nrow(glh@fixedContrast)
+  # denominator degrees of freedom
+  # get the total number of independent sampling units
+  N = sum(sapply(design@xPatternList, function(pattern) {
+    return(pattern@size)
+  }))
+  # get the rank of the design matrix (assumes X is full rank)
+  rankX = ncol(design@xPatternList[[1]]@designMatrix)
+  ddf = N - rankX
+  
+  # get the critical value
+  Fcrit = qf(1-glh@alpha,a,ddf)
+  # calculate power;
+  power = 1 - pf(Fcrit, a, ddf, omega);
+}
 
 
 #

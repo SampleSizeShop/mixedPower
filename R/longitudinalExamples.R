@@ -18,13 +18,9 @@
 #
 
 heterogeneousCS <- function(sigmaList,rho) {
-  Sigma = diag(c(1-0.04,rep(0.1-0.04, 4))) + matrix(c(rep(0.04,25)),nrow=5)
-  
-  
-  
-  sigmaList = c(1,rep(0.1,4))
-  Sigma = matrix(rep(0,25),nrow=5)
-  rho = 0.2
+  #sigmaList = c(1,rep(0.1,4))
+  size = length(sigmaList)
+  Sigma = matrix(rep(0,size*size),nrow=size)
   for(r in 1:nrow(Sigma)) {
     for(c in 1:ncol(Sigma)) {
       if (r==c) {
@@ -34,19 +30,7 @@ heterogeneousCS <- function(sigmaList,rho) {
       }
     }
   }
-  
-  U = matrix(c(1,1,1,1,
-               -1,0,0,0,
-               0,-1,0,0,
-               0,0,-1,0,
-               0,0,0,-1
-  ), ncol=4,byrow=TRUE)
-  
-  sigStar = t(U) %*% Sigma %*% U
-  
-  eps = sum(diag(sigStar))^2 / (ncol(U)*sum(diag(sigStar %*% sigStar)))
-  
-  eps
+  return(Sigma)
 }
 
 #
@@ -325,6 +309,6 @@ summarizeResults.longitudinal = function() {
   dev.off()
 }
 
-
-generateDesigns.longitudinal()
-summarizeResults.longitudinal()
+# 
+# generateDesigns.longitudinal()
+# summarizeResults.longitudinal()
