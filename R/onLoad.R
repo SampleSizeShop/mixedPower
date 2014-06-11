@@ -23,5 +23,6 @@
 .onLoad <- function(libname, pkgname) {
   library(stats)
   library(rPowerlib)
-  library(invWishartSum)  
+  library(invWishartSum) 
+  library(MASS)
 }

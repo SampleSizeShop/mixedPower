@@ -101,13 +101,13 @@ setClass (
               description ="",
               xPatternList = c(
                 new("missingDataPattern", group=1, observations=c(1,2,3), size=20,
-                    designMatrix=matrix(cbind(diag(3), matrix(rep(0,9), nrow=3)))),
+                    designMatrix=(cbind(diag(3), matrix(rep(0,9), nrow=3)))),
                 new("missingDataPattern", group=1, observations=c(1,2), size=20,
-                    designMatrix=matrix(cbind(diag(2), matrix(rep(0,6), nrow=2)))),
+                    designMatrix=(cbind(diag(3), matrix(rep(0,9), nrow=3))[1:2,])),
                 new("missingDataPattern", group=2, observations=c(1,2,3), size=20,
-                    designMatrix=matrix(cbind(matrix(rep(0,9), nrow=3), diag(3)))),
+                    designMatrix=(cbind(matrix(rep(0,9), nrow=3), diag(3)))),
                 new("missingDataPattern", group=2, observations=c(1,2), size=15,
-                    designMatrix=matrix(cbind(matrix(rep(0,6), nrow=2), diag(2)))) 
+                    designMatrix=(cbind(diag(3), matrix(rep(0,9), nrow=3))[1:2,])) 
               ),
               beta = matrix(c(1,1,1,0,0,0),ncol=1),
               Sigma = matrix(c(1,0.3,0.3,0.3,1,0.3,0.3,0.3,1), nrow=3)
@@ -196,24 +196,7 @@ setMethod("simulateData", "design.mixed",
           function(design, replicates=1000, blockSize=100,
                    outputDir=".", filePrefix="simulatedData",
                    xNames=NA, yNames=NA, realizations=1000) {
-            if (is.na(design@perGroupN)) {
-              stop("Per group sample size not specified in study design")
-            }
-            if (!is.na(xNames) && length(xNames) != (ncol(design@XEssence) + ncol(design@SigmaG))) {
-              stop("The number of values in xNames does not match the number of columns in XEssence")
-            }
-            if (!is.na(yNames) && length(yNames) != ncol(design@Beta)) {
-              stop("The number of values in yNames does not match the number of columns in Beta")
-            }
-            
-            ### calculate the mean, XB for fixed predictors ###
-            # first, calculate the full X matrix
-            X = matrix(rep(1,design@perGroupN), nrow=design@perGroupN) %x% design@XEssence
-            # calculate XB
-            XB = X %*% design@Beta
-            # total sample size
-            totalN = nrow(X) 
-            
+
             ### determine the number of sets and the size of each set ###
             
             # when the blocksize does not divide evenly into the
@@ -225,64 +208,76 @@ setMethod("simulateData", "design.mixed",
             }
             
             ### generate column names for the data sets ###
-            yPredef = sapply(1:ncol(XB), function(x) {paste("Y.",x,sep="",collapse="")})
-            xPredef = c(sapply(1:ncol(X), function(x) {paste("XF.",x,sep="",collapse="")}),
-                        sapply(1:ncol(design@SigmaG), function(x) {paste("XG.",x,sep="",collapse="")}))
+            yPredef = c("Y")
+            xPredef = sapply(1:nrow(design@beta), function(x) {paste("X.",x,sep="",collapse="")})
             if (!is.na(yNames) && !is.na(xNames)) {
-              dataSetNames = c("realizationID", "setID", yNames, xNames)
+              dataSetNames = c("setID", yNames, xNames)
             } else if (!is.na(yNames) && is.na(xNames)) {
-              dataSetNames = c("realizationID", "setID", yNames, xPredef)
+              dataSetNames = c("setID", yNames, xPredef)
             } else if (is.na(yNames) && !is.na(xNames)) {
-              dataSetNames = c("realizationID", "setID", yPredef, xNames)
+              dataSetNames = c("setID", yPredef, xNames)
             } else {
-              dataSetNames = c("realizationID", "setID", yPredef, xPredef)
+              dataSetNames = c("setID", yPredef, xPredef)
             }
             
-            #
-            # Calculate the covariance of errors per Glueck and Muller
-            #  
-            SigmaError = design@SigmaY - design@SigmaYG %*% solve(design@SigmaG) %*% t(design@SigmaYG)
-            
-            ### generate the realizations ###
-            sapply(1:realizations, function(realizationID) {
+            ### buil the data set blocks ###
+            sapply(1:numSets, function(setNumber) {
+              # set start and end iteration numbers for this block
+              startIter = ((setNumber-1)*blockSize) + 1
+              if (setNumber == numSets && lastSetSize > 0 && lastSetSize != blockSize) {
+                numDataSets = lastSetSize
+              } else {
+                numDataSets = blockSize
+              }
+              endIter = startIter + numDataSets - 1;
+              cat("Generating data sets ", startIter, " to ", endIter, "\n")
               
-              XG = mvrnorm(n = totalN, 
-                           mu=rep(0, nrow(design@SigmaG)), 
-                           design@SigmaG)
-              ### buil the data set blocks ###
-              sapply(1:numSets, function(setNumber) {
-                # set start and end iteration numbers for this block
-                startIter = ((setNumber-1)*blockSize) + 1
-                if (setNumber == numSets && lastSetSize > 0 && lastSetSize != blockSize) {
-                  numDataSets = lastSetSize
-                } else {
-                  numDataSets = blockSize
-                }
-                endIter = startIter + numDataSets - 1;
-                cat("Generating data sets ", startIter, " to ", endIter, "\n")
-                
-                # generate numDataSets number of data sets
-                dataSet = do.call("rbind", 
-                                  lapply(1:numDataSets, function(blockNumber) {
-                                    errorMatrix = 
-                                      mvrnorm(n = totalN, 
-                                              mu=rep(0, nrow(SigmaError)), 
-                                              SigmaError)
-                                    yData = XB + errorMatrix
-                                    dataBlock = data.frame(realizationID=realizationID,
-                                                           setID=((setNumber-1)*blockSize+blockNumber),
-                                                           Y=yData, X=X, XG=XG)
-                                    return(dataBlock)
+              # generate numDataSets number of data sets
+              dataSet = do.call("rbind", 
+                                lapply(1:numDataSets, function(blockNumber) {
+                                  
+                                  ### generate data for each ISU
+                                  id = 1;
+                                  data=data.frame()
+                                  first=TRUE
+                                  for(pattern in design@xPatternList) {
+                                    # get sigma matrix for this pattern
+                                    deletionMatrix = matrix(diag(nrow(design@Sigma))[pattern@observations,], 
+                                                            nrow=length(pattern@observations))
+                                    X = pattern@designMatrix
+                                    XB = X %*% design@beta
+                                    Sigma = (deletionMatrix %*% design@Sigma %*% t(deletionMatrix))
+                                    # create mu
+                                    mu = matrix(rep(0, nrow(Sigma)), ncol=1)
                                     
-                                  }))
-                # write to the output directory
-                names(dataSet) = dataSetNames
-                filename = paste(outputDir,"/", filePrefix,"Realization", realizationID, "Iter", 
-                                 startIter,"to",endIter,".csv",sep="")
-                write.csv(dataSet, row.names=FALSE, file=filename)
-                return(filename)
-              }) # end sapply
-            })
+                                    for(i in 1:pattern@size) {
+                                      errorMatrix = mvrnorm(n = 1, mu=mu, Sigma=Sigma)
+                                      yData = XB + errorMatrix
+                                      if (first) {
+                                        data = data.frame(setId=rep(blockNumber, nrow(yData)),
+                                                          id=rep(id, nrow(yData)), 
+                                                          Y=yData, X=X) 
+                                        first=FALSE
+                                          
+                                      } else {
+                                        data = rbind(data, data.frame(setId=rep(blockNumber, nrow(yData)),
+                                                                      id=rep(id, nrow(yData)), 
+                                                                      Y=yData, X=X))
+                                      }
+                                      id = id + 1
+                                    }                              
+
+                                    
+                                  }
+                                  return(data)                                  
+                                }))
+              # write to the output directory
+              names(dataSet) = dataSetNames
+              filename = paste(outputDir,"/", filePrefix,startIter,"to",endIter,".csv",sep="")
+              write.csv(dataSet, row.names=FALSE, file=filename)
+              return(filename)
+            }) # end sapply
           }
 )
-
+            
+            
