@@ -108,9 +108,11 @@ generateLongitudinalDesign = function(params) {
                         " group longitudinal design, test of time by treatment interaction. ",
                         "Per group N = ", params$perGroupN, 
                         ", percent missing = ", params$missingPercent,
-                        ", monotone missing? = ", (params$monotone==1),
+                        ", missing pattern type = ", params$missingType,
+                        ", covariance = ", params$covariance,
                         ", target power = ", params$targetPower), collapse="")
-
+  # number of observations for a complete data case
+  maxObservations = params$maxObservations
   
   # build the pattern list
   patternList = list()
@@ -127,23 +129,23 @@ generateLongitudinalDesign = function(params) {
     if (numIncomplete == 0) {
       # complete case
       patternList[[pattern]] = 
-        new("missingDataPattern", group=grp, observations=1:params$maxObservations, 
-            designMatrix = (designBetween %x% diag(params$maxObservations)),
+        new("missingDataPattern", group=grp, observations=1:maxObservations, 
+            designMatrix = (designBetween %x% diag(maxObservations)),
             size=numComplete)
-    } else if (params$monotone) {
+    } else if (params$missingType == 'monotone') {
       ## monotone dropout pattern - once missing, never come back
       # complete case
       patternList[[pattern]] = 
-        new("missingDataPattern", group=grp, observations=1:params$maxObservations, 
-            designMatrix = (designBetween %x% diag(params$maxObservations)),
+        new("missingDataPattern", group=grp, observations=1:maxObservations, 
+            designMatrix = (designBetween %x% diag(maxObservations)),
             size=numComplete)
       pattern = pattern + 1
       # missing last 2 observations
-      missingPattern2 = 1:(params$maxObservations-2)
+      missingPattern2 = 1:(maxObservations-2)
       patternList[[pattern]] = 
         new("missingDataPattern", group=grp, observations=missingPattern2, 
             designMatrix = (designBetween %x% 
-                              matrix(diag(params$maxObservations)[missingPattern2,], 
+                              matrix(diag(maxObservations)[missingPattern2,], 
                                      nrow=length(missingPattern2))),
             size=numIncomplete)
 
@@ -152,8 +154,8 @@ generateLongitudinalDesign = function(params) {
       ## - delete observations 2 and 4
       # complete case
       patternList[[pattern]] = 
-        new("missingDataPattern", group=grp, observations=1:params$maxObservations, 
-            designMatrix = (designBetween %x% diag(params$maxObservations)),
+        new("missingDataPattern", group=grp, observations=1:maxObservations, 
+            designMatrix = (designBetween %x% diag(maxObservations)),
             size=numComplete)
       pattern = pattern + 1
       
@@ -162,21 +164,32 @@ generateLongitudinalDesign = function(params) {
       patternList[[pattern]] = 
         new("missingDataPattern", group=grp, observations=incompleteObs, 
             designMatrix = (designBetween %x% 
-                              matrix(diag(params$maxObservations)[incompleteObs,], 
+                              matrix(diag(maxObservations)[incompleteObs,], 
                                      nrow=length(incompleteObs))),
             size=numIncomplete)
     }
     pattern = pattern + 1
   }
   
+  # build sigma
+  rho = 0.04
+  sigmaSq = 1
+  if (params$covariance == 'CS') {
+    Sigma = heterogeneousCS(rep(1,maxObservations),rho)
+  } else if (params$covariance == 'CSH') {
+    Sigma = heterogeneousCS(c(1,0.5,0.3,0.1,0.1),rho)
+  } else {
+    Sigma = sigmaSq * 
+      ar1Matrix(maxObservations,rho)
+  }
+
   # build the design
-  beta = matrix(c(1,rep(0,(params$maxObservations-1)),
-                  rep(0,params$maxObservations*(params$numGroups-1))))
+  beta = matrix(c(1,rep(0,(maxObservations-1)),
+                  rep(0,maxObservations*(params$numGroups-1))))
   design = new("design.mixed", name = name, description = description,
                xPatternList = patternList,
                beta = beta,
-               Sigma = params$sigmaSq * 
-                 ar1Matrix(params$maxObservations,params$rho)
+               Sigma = Sigma
   )
   # get the appropriate hypothesis
   glh = getGlh(params$numGroups, params$maxObservations)
@@ -189,7 +202,7 @@ generateLongitudinalDesign = function(params) {
 
 
 
-generateDesigns.longitudinal = function() {
+generateDesigns.longitudinal = function(output.data.dir=".") {
   #
   # For each longitudinal randomized design, we
   # vary the following parameters
@@ -207,6 +220,8 @@ generateDesigns.longitudinal = function() {
   # in all cases, we select the scale factor 
   # for beta to achieve the following power
   targetPowerList = c(0.2, 0.5, 0.8)
+  # maximum number of observations 
+  maxObservationsList = c(5)
   
   # generate parameters
   paramList = list(targetPower=targetPowerList,
@@ -214,7 +229,8 @@ generateDesigns.longitudinal = function() {
                    missingType=missingTypeList,
                    missingPercent=missingPercentList,
                    perGroupN=perGroupNList,
-                   numGroups=numGroupsList)
+                   numGroups=numGroupsList,
+                   maxObservations=maxObservationsList)
   paramComboList = data.frame(expand.grid(paramList))
   
   #
@@ -233,10 +249,12 @@ generateDesigns.longitudinal = function() {
   paramComboList$betaScale = betaScaleList
   
   # write the parameter data to a csv file
-  write.csv(paramComboList, file=dataFile("longitudinalParams.csv"),
+  write.csv(paramComboList, 
+            file=paste(c(output.data.dir,"longitudinalParams.csv"),collapse="/"),
             row.names=FALSE, eol="\r\n")
   # write the designs to an Rdata file
-  save(longitudinalDesignList, file=dataFile("longitudinalDesigns.RData"))
+  save(longitudinalDesignList, 
+       file=paste(c(output.data.dir,"longitudinalDesigns.RData"),collapse="/"))
   
 }
 
