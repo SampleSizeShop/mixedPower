@@ -1,8 +1,9 @@
-The rPowerlib Package
+The mixedPower Package
 =========================
 
-The rPowerlib package for R (>3.0.0) calculates power for the general
-linear multivariate model with or without Gaussian covariates.  
+The mixedPower package for R (>3.0.0) calculates power for the 
+linear mixed model for longitudinal data. The power calculations
+may be used for designs with or without anticipated missing data.  
 
 The package provides companion code for the manuscript:
 

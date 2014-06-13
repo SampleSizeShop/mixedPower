@@ -197,31 +197,23 @@ generateDesigns.longitudinal = function() {
   # number of treatment groups
   numGroupsList = c(2, 4)
   # total ISUs per treatment group
-  perGroupNList = c(20, 50, 100)
-  # max observations for each participants
-  maxObservationsList = c(5, 10)
+  perGroupNList = c(50, 100)
   # missing data pattern (either monotone or non-monotone)
-  monotoneList = c(1, 0)
+  missingTypeList = c("monotone", "non-monotone")
   # percent missing
   missingPercentList = c(0, 0.2, 0.4)
+  # covariance
+  covarianceList = c("CS", "CSH", "AR(1)")
   # in all cases, we select the scale factor 
   # for beta to achieve the following power
   targetPowerList = c(0.2, 0.5, 0.8)
-  # Lear parameters
-  rhoList = c(0.4)
-  deltaList = c(1)
-  # sigma squared
-  sigmaSqList = c(1)
   
   # generate parameters
-  paramList = list(monotone=monotoneList, 
-                   maxObservations=maxObservationsList,
+  paramList = list(targetPower=targetPowerList,
+                   covariance=covarianceList,
+                   missingType=missingTypeList,
                    missingPercent=missingPercentList,
-                   perGroupN=perGroupNList, 
-                   targetPower=targetPowerList,
-                   rho=rhoList,
-                   delta=deltaList,
-                   sigmaSq=sigmaSqList,
+                   perGroupN=perGroupNList,
                    numGroups=numGroupsList)
   paramComboList = data.frame(expand.grid(paramList))
   

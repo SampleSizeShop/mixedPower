@@ -17,12 +17,22 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #
 
-calculateEmpiricalPowerForDesignList <- function() {
-  if (study.sasEmpirical) {
-    
-  } else {
-    
-  }
+
+calculateEmpiricalPowerForDesignList <- function(output.data.dir) {
+  # call the sas code to run empirical power
+  result <- system(paste(c("sas.exe -i ", 
+                           paste(c(path.package("mixedPower"), 
+                                   "inst/sas/calculateEmpiricalPower.sas"), 
+                                 collapse="/")), collapse=""), 
+                   intern = TRUE, show.output.on.console = TRUE)
+  
+  # load the empirical power results
+  empiricalPowerData = read.csv(
+    paste(c(path.package("mixedPower"), "inst/sas/empiricalPower.csv"), collapse="/"),
+    stringsAsFactors=FALSE)
+
+  # save as a Rdata file
+  save(empiricalPowerData, file=paste(c(output.data.dir, "empiricalPower.RData"), collapse="/"))
 }
 
 #' calculateApproximatePowerForDesignList
@@ -42,7 +52,7 @@ calculateApproximatePowerForDesignList <- function(designList, output.data.dir="
   # I. Methodology and comparison of some full span designs. 
   # Statistics in Medicine, 11(14-15), 1889–1913.
   #
-  approxPowerList = sapply(longitudinalDesignList, function(designAndGlh) {
+  approxPowerList = sapply(designList, function(designAndGlh) {
     return(mixedPower.helms(designAndGlh[[1]], designAndGlh[[2]]))
   })
   
