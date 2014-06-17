@@ -65,13 +65,15 @@ data longitudinalParams;
 	set longitudinalParams(obs=6);
 run;
 
+proc iml;
+	foo = I(3);
+	print foo;
+quit;
+
 /*
 * Calculate empirical power for the 4 group, cluster randomized trials
 */
 proc iml;
-	%INCLUDE "&MODULES_DIR\simulateMixedModel.sxs"/NOSOURCE2;
-	%INCLUDE "&MODULES_DIR\calculatePowerKenwardRoger.sxs"/NOSOURCE2;
-
 	* conveience function to generate a lear correlation matrix;
 	start learMatrix(size, rho, delta, matrix);
 		dmin=1;
@@ -87,6 +89,7 @@ proc iml;
 			end;
 		end;
 		matrix = lear;
+		return(matrix);
 	finish;
 
 	* generate an autoregressive covariance matrix;
@@ -104,154 +107,189 @@ proc iml;
 			end;
 		end;
 		matrix = ar1;
+		return(matrix);
 	finish;
 
-	* wrapper function to generate appropriate X and Sigma;
-	start longitEmpiricalPower(monotone, maxObservations, missingPercent,
-								perGroupN, rho, delta, sigmaSq, numGroups, betaScale,
-								empiricalPower);
+	/* 
+	* generate a heterogeneous compound symmetric covariance
+	* sigmaList - an Nx1 vector of sigma values
+	* rho - the correlation between observations
+	*/
+	start heterogeneousCSMatrix(sigmaList,rho, matrix) {
+		size = nrow(sigmaList);
+		matrix = J(size,size,0);
+		do r = 1 to size;
+			do c = 1 to size;
+		      if (r==c) {
+		        matrix[r,c] = sigmaList[r]*sigmaList[c]
+		      } else {
+		        matrix[r,c] = sigmaList[r]*sigmaList[c] * rho
+		      }
+			end;
+		end;
+		return(matrix);
+	finish;
 
-		* Build the sigma matrix for a complete case;
-		call ar1Matrix(maxObservations, rho, SigmaComplete);
-		SigmaComplete = SigmaComplete # sigmaSq;
 
-		* determine the number of complete and missing cases;
-		numComplete = floor(perGroupN * (1 - missingPercent));
+	/*
+	* Generate data for a longitudinal design with the specified parameters
+	*/
+	start generateData(replicates, setSize, simLib, simPrefix,
+		monotone, maxObservations, missingPercent,
+		perGroupN, numGroups, betaScale);
+
+		* determine the number of complete and incomplete sampling units;
+		numComplete = floor(perGroupN * (1 - missingPercent);
 		numIncomplete = perGroupN - numComplete;
 
-		* build the design matrix and sigma matrices;
-		isu = 1;
-		do grp=1 to numgroups;
-			designBetween = I(numGroups)[grp,];
-
-			if numIncomplete = 0 then do;
-				* add design matrices for each isu;
-				X = X // (J(numComplete,1,1) @ (designBetween @ I(maxObservations)));
-				* add sigma matrices for each ISU;
-				SigmaGroup = I(numComplete) @ SigmaComplete;
-
-				if isu = 1 then SigmaS = SigmaGroup;
-				else SigmaS = block(SigmaS, SigmaGroup);
-
+		* build the within design matrix for complete cases and incomplete cases;
+		designWithinComplete = I(maxObservations);
+		X = J(numComplete,1,1) @ I(numGroups) @ designWithinComplete; 
+		if numIncomplete != 0 then;
+			if missingType = "monotone" then do;
+			    designWithinIncomplete = I(maxObservations)[1:(maxObservations-2),];
+			else;
+				designWithinIncomplete = I(maxObservations)[{1,3,5},];
 			end;
-			else do;
-				if monotone = 1 then do;
-	      			* monotone dropout pattern - once missing, never come back;
-					* 50% complete, 30% missing last observation, 20% missing last 2;
-					minObs = maxObservations - 2;
-					* add design matrices for each isu;
-					X = X // (J(numComplete,1,1) @ (designBetween @ I(maxObservations))) 
-						// (J(numIncomplete,1,1) @ (designBetween @ I(maxObservations)[(1:minObs),]));
-					* add sigma matrices for each ISU;
-					SigmaGroupComplete = I(numComplete) @ SigmaComplete;
-					SigmaGroupIncomplete = I(numIncomplete) @ 
-						(I(maxObservations)[(1:minObs),] * SigmaComplete * T(I(maxObservations)[(1:minObs),]));
-					SigmaGroup = block(SigmaGroupComplete, SigmaGroupIncomplete);
-
-					if isu = 1 then SigmaS = SigmaGroup;
-					else SigmaS = block(SigmaS, SigmaGroup);
-
-				end;
-				else do;
-					* Non-monotone dropout pattern ;
-					* - delete 2nd and 4th observations
-
-					* create non-monotone missing patterns;
-					missingPattern = {1 3 5}; 
-					minObs = 3;
-					* add design matrices for each isu;
-					X = X // (J(numComplete,1,1) @ (designBetween @ I(maxObservations)))  
-						// (J(numIncomplete,1,1) @ (designBetween @ I(maxObservations)[missingPattern,]));
-					* add sigma matrices for each ISU;
-					SigmaGroupComplete = I(numComplete) @ SigmaComplete;
-					SigmaGroupIncomplete = I(numIncomplete) @ (I(maxObservations)[missingPattern,] * SigmaComplete * T(I(maxObservations)[missingPattern,]));
-					SigmaGroup = block(SigmaGroupComplete, SigmaGroupIncomplete);
-					* concatenate onto full sigma matrix;
-					if isu = 1 then SigmaS = SigmaGroup;
-					else SigmaS = block(SigmaS, SigmaGroup);
-
-				end;
-			end;
-
-			* create subject IDs;
-			idList = idList // (T(isu:isu+numComplete-1) @ J(maxObservations,1,1));
-			isu = isu + numComplete + 1;
-			if numIncomplete > 0 then do;
-				idList = idList // (T(isu:isu+numIncomplete-1) @ J(minObs,1,1));
-				isu = isu + numIncomplete + 1;
-			end;
+			X = X // J(numIncomplete,1,1) @ I(numGroups) @ designWithinIncomplete; 
 		end;
 
-		* build column names for X, and build beta;
+		* build the beta matrix;
+		Beta = {1} // J(((numGroups * maxObservations) - 1), 1, 0);
+
+		* create the Sigma matrix for the complete cases and incomplete cases; 
+		rho = 0.04;
+		if covariance = "CS" then;
+			heterogeneousCSMatrix(J(maxObservations,1,1), rho, SigmaComplete);
+		else;
+			if covariance = "CSH" then;
+				heterogeneousCSMatrix({1.0.5,0.3,0.1,0.1}, rho, SigmaComplete);
+			else;
+				ar1Matrix(maxObservations, rho, SigmaComplete);
+			end;
+		end;
+		if numIncomplete != 0 then;
+			SigmaIncomplete = designWithinIncomplete * SigmaComplete * designWithinIncomplete`;
+		end;
+
+		* build the data set column names;
 		if numGroups = 2 then do;
-			if maxObservations = 5 then do;
-				XFullColNames={"subjectId" "trt1_rep1" "trt1_rep2" "trt1_rep3" "trt1_rep4" "trt1_rep5"
+			XFullColNames={"subjectId" "trt1_rep1" "trt1_rep2" "trt1_rep3" "trt1_rep4" "trt1_rep5"
 					"trt2_rep1" "trt2_rep2" "trt2_rep3" "trt2_rep4" "trt2_rep5"}; 
-				macroName = "longit2Group5Rm";
-			end;
-			else do;
-				XFullColNames={"subjectId" "trt1_rep1" "trt1_rep2" "trt1_rep3"
-								"trt2_rep1" "trt2_rep2" "trt2_rep3"}; 
-				macroName = "longit2Group3Rm";
-			end;
-		end;
 		else do;
-			if maxObservations = 5 then do;
-				XFullColNames={"subjectId" "trt1_rep1" "trt1_rep2" "trt1_rep3" "trt1_rep4" "trt1_rep5"
-				"trt2_rep1" "trt2_rep2" "trt2_rep3" "trt2_rep4" "trt2_rep5" 
-				"trt3_rep1" "trt3_rep2" "trt3_rep3" "trt3_rep4" "trt3_rep5" 
-				"trt4_rep1" "trt4_rep2" "trt4_rep3" "trt4_rep4" "trt4_rep5" }; 
-				macroName = "longit4Group5Rm";
-			end;
-			else do;
-				XFullColNames={"subjectId" "trt1_rep1" "trt1_rep2" "trt1_rep3" 
-				"trt2_rep1" "trt2_rep2" "trt2_rep3" 
-				"trt3_rep1" "trt3_rep2" "trt3_rep3" 
-				"trt4_rep1" "trt4_rep2" "trt4_rep3" }; 
-				macroName = "longit4Group3Rm";
-			end;
+			XFullColNames={"subjectId" "trt1_rep1" "trt1_rep2" "trt1_rep3" "trt1_rep4" "trt1_rep5"
+			"trt2_rep1" "trt2_rep2" "trt2_rep3" "trt2_rep4" "trt2_rep5" 
+			"trt3_rep1" "trt3_rep2" "trt3_rep3" "trt3_rep4" "trt3_rep5" 
+			"trt4_rep1" "trt4_rep2" "trt4_rep3" "trt4_rep4" "trt4_rep5" }; 
 		end;
-		XModelColNames = XFullColNames[1,(2:NCOL(XFullColNames))];
-		* define beta;
-		Beta = betaScale*({1} // J((NCOL(XModelColNames)-1),1,0));
 
-		print idList;
-		X = idList || X ;
-		print X;
-		print SigmaS;
-		
-		simlib= "outData";
-		simprefix = "longitExamples";
+		* determine the number of sets;
+		numSets = replicates / setSize;
 
-		blockSize = 500;
-		*if clusterSize > 50 then blockSize = 100;
-		call calculateEmpiricalPowerConditional(10000, blockSize,  
-		  simlib, simprefix, macroName,
-		  X, XFullColNames, XModelColNames, Beta, SigmaS,
-		  empiricalPower);
+		* create a vector of means (all 0's) for the random errors;
+		mu = J(maxObservations,1,0);
 
+		/*
+		*
+		* We create a total of #replicates data sets in the
+		* long format appropriate for PROC MIXED.
+		*
+		* The replicates are split across multiple files of size 'setSize'
+		* with the start and end replicate number in the filename.
+		*
+		* Each data contains the following fields
+		*  setID - the data set identifier
+		*  Y - the simulated Y values
+		*  E - the simulated errors
+		*  X - all columns from the user specified X matrix with
+		*    column names as specified in XFullColNames
+		*/
+		setId = 1;
+		do setNum = 1 to numSets;
+		  do repNum = 1 to setSize;
+		    isu = 1;
+		    * generate complete cases;
+		    E = E // randnormal(numComplete * numGroups, mu, SigmaComplete)
+			idList = idList // (T(isu:isu+numComplete-1) @ J(maxObservations,1,1));
+			isu = isu + numComplete;
 
-		free X;
-		free SigmaS;
+			if numIncomplete > 0 then;
+			    EIncomplete = randnormal(numIncomplete * numGroups, mu, SigmaComplete)
+				idList = idList // (T(isu:isu+numComplete-1) @ J(maxObservations,1,1));
+			end;
+			* form the responses;
+			Y = X * Beta + E;
+			* build the data set;
+			block = J(nrow(Y),1,setId) || Y || E || idList || X;
+			setId = setId + 1;
+
+			* append the block to the data set;
+			output = output // block;
+		  end;
+		  * write to disk;
+		  startIterNum = (setNum-1)*setSize+1;
+		  startIter = char(startIterNum);
+		  endIterNum = startIterNum + setSize - 1;
+		  endIter = char(endIterNum); 
+		  dataSetName = simPrefix + "Iter" + strip(startIter) + 
+				"to" + strip(endIter);
+
+		  dsList = dsList // dataSetname;
+
+		  /*
+		  * Write a temporary data set since I
+		  * can't convince IML to use a dynamic name here
+		  */
+		  names = ({"setID" "Y" "E"}) || XFullColNames;
+		  create temp from output[colname=names];
+		  append from output;
+		  close temp;
+		  free output;
+
+		  /*
+		  * Change the name of the data set using SAS
+		  *//*
+		  submit dataSetName;
+			data &dataSetName;
+				set temp;
+			run;
+		  endsubmit;
+		  */
+		  * remove the temp data set;
+		  call delete("work", "temp"); 
+		end;
+
 	finish;
 
+
+	* wrapper function to generate appropriate X and Sigma;
+	start longitEmpiricalPower(covariance, missingType, missingPercent, 
+							perGroupN, numGroups, maxObservations, betaScale,
+							empiricalPower);
+
+		* generate data for the design;
+		generateData(10000, 1000, "work", "simData",
+			monotone, maxObservations, missingPercent,
+			perGroupN, numGroups, betaScale);
+
+
+	finish;
+								
 	* load the parameter data into a matrix;
-	paramNames={"monotone" "maxObservations" "missingPercent" "perGroupN" "targetPower" 
-				"rho" "delta" "sigmaSq" "numGroups" "betaScale"};
+	paramNames={"targetPower" "covariance" "missingType" "missingPercent" "perGroupN" 
+				"numGroups" "maxObservations" "betaScale"};
 	use longitudinalParams;
   	read all into paramList[colname=paramNames];
 
 	do i=1 to NROW(paramList);
 		print ("Case: " + strip(char(i)));
 
-		call longitEmpiricalPower(paramList[i,"monotone"],
-							paramList[i,"maxObservations"], 
+		call longitEmpiricalPower(paramList[i,"covariance"],
+							paramList[i,"missingType"],
 							paramList[i,"missingPercent"],
 							paramList[i,"perGroupN"], 
-							paramList[i,"rho"], 
-							paramList[i,"delta"], 
-							paramList[i,"sigmaSq"],
 							paramList[i,"numGroups"],
+							paramList[i,"maxObservations"], 
 							paramList[i,"betaScale"],
 							empiricalPower);
 		empiricalPowerResults = empiricalPowerResults // empiricalPower;
