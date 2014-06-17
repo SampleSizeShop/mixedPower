@@ -72,7 +72,7 @@ getSigmaStacked = function(design) {
 #
 # Generate random data sets for the given design
 #
-simulateData = function(design, replicates=10000, blockSize=1000, 
+simulateData2 = function(design, replicates=10000, blockSize=1000, 
                         outputDir=".", filePrefix="simData") {
   if (class(design) != "design.mixed") {
     stop("design must have class 'design.mixed'")
