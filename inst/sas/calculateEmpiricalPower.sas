@@ -68,7 +68,6 @@ data longitudinalParams;
 	covarCS = (covariance = "CS");
 	covarCSH = (covariance = "CSH");
 	covarAR1 = (covariance = "AR(1)");
-	betaScale = betaScale + 0;
 run;
 
 /*
@@ -169,6 +168,7 @@ proc iml;
 		if numIncomplete > 0 then
 			SigmaIncomplete = designWithinIncomplete * SigmaComplete * designWithinIncomplete`;
 
+			*print SigmaIncomplete;
 		* build the data set column names;
 		if numGroups = 2 then
 			XFullColNames={"subjectId" "trt1_rep1" "trt1_rep2" "trt1_rep3" "trt1_rep4" "trt1_rep5"
@@ -184,6 +184,12 @@ proc iml;
 
 		* create a vector of means (all 0's) for the random errors;
 		mu = J(maxObservations,1,0);
+		if numIncomplete > 0 then do;
+			if monotone = 1 then
+			    muIncomplete = J(maxObservations-2,1,0);
+			else
+				muIncomplete = J(3,1,0);
+		end;
 
 		/*
 		*
@@ -208,11 +214,11 @@ proc iml;
 		    * generate complete cases;
 		    E = E // colvec(randnormal(numComplete * numGroups, mu, SigmaComplete));
 			idList = idList // (T(isu:isu+(numComplete*numGroups)-1) @ J(maxObservations,1,1));
-			isu = isu + numComplete;
+			isu = isu + (numComplete*numGroups);
 
 			if numIncomplete > 0 then do;
-			    E = E // colvec(randnormal(numIncomplete * numGroups, mu, SigmaComplete));
-				idList = idList // (T(isu:isu+(numIncomplete*numGroups)-1) @ J(maxObservations,1,1));
+			    E = E // colvec(randnormal(numIncomplete * numGroups, muIncomplete, SigmaIncomplete));
+				idList = idList // (T(isu:isu+(numIncomplete*numGroups)-1) @ J(nrow(SigmaIncomplete),1,1));
 			end;
 			* form the responses;
 			Y = X * Beta + E;
@@ -353,13 +359,13 @@ proc iml;
 				"missingPercent" "perGroupN" 
 				"numGroups" "maxObservations" "betaScale"} into paramList[colname=paramNames];
 
-	print paramList;
+	*print paramList;
 	
 	call randseed(1546); 
 	do i=1 to NROW(paramList);
 		print ("Case: " + strip(char(i)));
 
-		run longitEmpiricalPower(10000, 500, "work", "simData",
+		run longitEmpiricalPower(10000, 250, "work", "simData",
 							paramList[i,"monotone"],
 							paramList[i,"covarCS"],
 							paramList[i,"covarCSH"],
