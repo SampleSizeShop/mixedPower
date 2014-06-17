@@ -1,11 +1,11 @@
 /*
 *
-* Cluster randomized designs with four treatments
+* Calculate empirical power values for the validation study in
+* the manuscript
 *
-* We vary the following parameters
-*  per group N: 10, 40
-*  cluster size: 5, 50, 500
-*  missing percent (in 50% of ISUs): 0%, 10%, 20%, 40%
+* Kreidler, S. M., Muller, K. E., & Glueck, D. H. 
+* A Power Approximation for Longitudinal Studies Using the 
+* Kenward and Roger Wald Test in the Linear Mixed Model, In review.
 */
 
 %include "common.sas";
@@ -59,23 +59,24 @@ proc import datafile="&OUT_DATA_DIR\longitudinalParams.csv"
      dbms=csv
      replace;
      getnames=yes;
-run;
+run; 
 
 data longitudinalParams;
-	set longitudinalParams(obs=6);
+	set longitudinalParams;
+	* make indicators for character data;
+	monotone = (missingType = "monotone");
+	covarCS = (covariance = "CS");
+	covarCSH = (covariance = "CSH");
+	covarAR1 = (covariance = "AR(1)");
+	betaScale = betaScale + 0;
 run;
-
-proc iml;
-	foo = I(3);
-	print foo;
-quit;
 
 /*
 * Calculate empirical power for the 4 group, cluster randomized trials
 */
 proc iml;
 	* conveience function to generate a lear correlation matrix;
-	start learMatrix(size, rho, delta, matrix);
+	start learMatrix(size, rho, delta);
 		dmin=1;
 		dmax=size-1;
 		lear = I(size);
@@ -88,12 +89,11 @@ proc iml;
 		    	lear[c,r] = value;
 			end;
 		end;
-		matrix = lear;
-		return(matrix);
+		return(lear);
 	finish;
 
 	* generate an autoregressive covariance matrix;
-	start ar1Matrix(size, rho, matrix);
+	start ar1Matrix(size, rho);
 		dmin=1;
 		dmax=size-1;
 		ar1 = I(size);
@@ -106,8 +106,7 @@ proc iml;
 		    	ar1[c,r] = value;
 			end;
 		end;
-		matrix = ar1;
-		return(matrix);
+		return(ar1);
 	finish;
 
 	/* 
@@ -115,16 +114,15 @@ proc iml;
 	* sigmaList - an Nx1 vector of sigma values
 	* rho - the correlation between observations
 	*/
-	start heterogeneousCSMatrix(sigmaList,rho, matrix) {
+	start heterogeneousCSMatrix(sigmaList,rho);
 		size = nrow(sigmaList);
 		matrix = J(size,size,0);
 		do r = 1 to size;
 			do c = 1 to size;
-		      if (r==c) {
-		        matrix[r,c] = sigmaList[r]*sigmaList[c]
-		      } else {
-		        matrix[r,c] = sigmaList[r]*sigmaList[c] * rho
-		      }
+		      if r = c then
+		        matrix[r,c] = sigmaList[r]*sigmaList[c];
+		      else
+		        matrix[r,c] = sigmaList[r]*sigmaList[c] * rho;
 			end;
 		end;
 		return(matrix);
@@ -135,53 +133,51 @@ proc iml;
 	* Generate data for a longitudinal design with the specified parameters
 	*/
 	start generateData(replicates, setSize, simLib, simPrefix,
-		monotone, maxObservations, missingPercent,
-		perGroupN, numGroups, betaScale);
+			monotone, covarCS, covarCSH, covarAR1,
+			maxObservations, missingPercent,
+			perGroupN, numGroups, betaScale, dsList);
 
 		* determine the number of complete and incomplete sampling units;
-		numComplete = floor(perGroupN * (1 - missingPercent);
+		numComplete = floor(perGroupN * (1 - missingPercent));
 		numIncomplete = perGroupN - numComplete;
 
 		* build the within design matrix for complete cases and incomplete cases;
 		designWithinComplete = I(maxObservations);
 		X = J(numComplete,1,1) @ I(numGroups) @ designWithinComplete; 
-		if numIncomplete != 0 then;
-			if missingType = "monotone" then do;
+		if numIncomplete > 0 then do;
+			if monotone = 1 then
 			    designWithinIncomplete = I(maxObservations)[1:(maxObservations-2),];
-			else;
+			else
 				designWithinIncomplete = I(maxObservations)[{1,3,5},];
-			end;
 			X = X // J(numIncomplete,1,1) @ I(numGroups) @ designWithinIncomplete; 
 		end;
 
 		* build the beta matrix;
 		Beta = {1} // J(((numGroups * maxObservations) - 1), 1, 0);
+		Beta = Beta * betaScale;
 
 		* create the Sigma matrix for the complete cases and incomplete cases; 
 		rho = 0.04;
-		if covariance = "CS" then;
-			heterogeneousCSMatrix(J(maxObservations,1,1), rho, SigmaComplete);
-		else;
-			if covariance = "CSH" then;
-				heterogeneousCSMatrix({1.0.5,0.3,0.1,0.1}, rho, SigmaComplete);
-			else;
-				ar1Matrix(maxObservations, rho, SigmaComplete);
-			end;
+		if covarCS then
+			SigmaComplete = heterogeneousCSMatrix(J(maxObservations,1,1), rho);
+		else do;
+			if covarCSH then
+				SigmaComplete = heterogeneousCSMatrix({1.0,0.5,0.3,0.1,0.1}, rho);
+			else
+				SigmaComplete = ar1Matrix(maxObservations, rho);
 		end;
-		if numIncomplete != 0 then;
+		if numIncomplete > 0 then
 			SigmaIncomplete = designWithinIncomplete * SigmaComplete * designWithinIncomplete`;
-		end;
 
 		* build the data set column names;
-		if numGroups = 2 then do;
+		if numGroups = 2 then
 			XFullColNames={"subjectId" "trt1_rep1" "trt1_rep2" "trt1_rep3" "trt1_rep4" "trt1_rep5"
 					"trt2_rep1" "trt2_rep2" "trt2_rep3" "trt2_rep4" "trt2_rep5"}; 
-		else do;
+		else
 			XFullColNames={"subjectId" "trt1_rep1" "trt1_rep2" "trt1_rep3" "trt1_rep4" "trt1_rep5"
 			"trt2_rep1" "trt2_rep2" "trt2_rep3" "trt2_rep4" "trt2_rep5" 
 			"trt3_rep1" "trt3_rep2" "trt3_rep3" "trt3_rep4" "trt3_rep5" 
 			"trt4_rep1" "trt4_rep2" "trt4_rep3" "trt4_rep4" "trt4_rep5" }; 
-		end;
 
 		* determine the number of sets;
 		numSets = replicates / setSize;
@@ -204,27 +200,33 @@ proc iml;
 		*  X - all columns from the user specified X matrix with
 		*    column names as specified in XFullColNames
 		*/
-		setId = 1;
+		setId = 1;		
+
 		do setNum = 1 to numSets;
 		  do repNum = 1 to setSize;
 		    isu = 1;
 		    * generate complete cases;
-		    E = E // randnormal(numComplete * numGroups, mu, SigmaComplete)
-			idList = idList // (T(isu:isu+numComplete-1) @ J(maxObservations,1,1));
+		    E = E // colvec(randnormal(numComplete * numGroups, mu, SigmaComplete));
+			idList = idList // (T(isu:isu+(numComplete*numGroups)-1) @ J(maxObservations,1,1));
 			isu = isu + numComplete;
 
-			if numIncomplete > 0 then;
-			    EIncomplete = randnormal(numIncomplete * numGroups, mu, SigmaComplete)
-				idList = idList // (T(isu:isu+numComplete-1) @ J(maxObservations,1,1));
+			if numIncomplete > 0 then do;
+			    E = E // colvec(randnormal(numIncomplete * numGroups, mu, SigmaComplete));
+				idList = idList // (T(isu:isu+(numIncomplete*numGroups)-1) @ J(maxObservations,1,1));
 			end;
 			* form the responses;
 			Y = X * Beta + E;
+
 			* build the data set;
 			block = J(nrow(Y),1,setId) || Y || E || idList || X;
 			setId = setId + 1;
 
 			* append the block to the data set;
 			output = output // block;
+
+			free E;
+			free Y;
+			free idList;
 		  end;
 		  * write to disk;
 		  startIterNum = (setNum-1)*setSize+1;
@@ -248,13 +250,13 @@ proc iml;
 
 		  /*
 		  * Change the name of the data set using SAS
-		  *//*
+		  */
 		  submit dataSetName;
 			data &dataSetName;
 				set temp;
 			run;
 		  endsubmit;
-		  */
+		  
 		  * remove the temp data set;
 		  call delete("work", "temp"); 
 		end;
@@ -263,33 +265,109 @@ proc iml;
 
 
 	* wrapper function to generate appropriate X and Sigma;
-	start longitEmpiricalPower(covariance, missingType, missingPercent, 
-							perGroupN, numGroups, maxObservations, betaScale,
-							empiricalPower);
+	start longitEmpiricalPower(replicates, setSize, simlib, simprefix,
+			monotone, covarCS, covarCSH, covarAR1, 
+			maxObservations, missingPercent,
+			perGroupN, numGroups, betaScale, empiricalPower);
 
 		* generate data for the design;
-		generateData(10000, 1000, "work", "simData",
-			monotone, maxObservations, missingPercent,
-			perGroupN, numGroups, betaScale);
+		run generateData(replicates, setSize, simlib, simprefix,
+			monotone, covarCS, covarCSH, covarAR1,
+			maxObservations, missingPercent,
+			perGroupN, numGroups, betaScale, dsList);
 
+			* build the name of the contrast data set;
+		contrastDataSet = "contrasts" + "_" + simprefix;
+		empiricalPowerDataSet = "empiricalPower" + "_" + simprefix; 
 
+		* cleanup the SAS environment before we start;
+		submit contrastDataSet;
+		proc datasets;
+			delete &contrastDataSet;
+		run;
+		endsubmit;
+
+		* set the proc mixed call;
+		if numGroups = 2 then mixedModMacroName="longit2Group5Rm";
+		else mixedModMacroName="longit4Group5Rm";
+
+		* set the covariance option for prox mixed;
+		if covarCS then covariance='CS';
+		else do;
+			if covarCSH then covariance = 'CSH';
+			else covariance = 'AR(1)';
+		end;
+
+		do i = 1 to nrow(dsList);
+		* get the data set name;
+		sdCurrent = dsList[i];
+		print sdCurrent;
+		* call proc mixed;
+		submit sdCurrent mixedModMacroName contrastDataSet covariance;
+			ods exclude all;
+			ods noresults;
+			* fit the model and output p-value for test;
+			ods output Contrasts=tmpSimContrasts;
+			%&mixedModMacroName(&sdCurrent, &covariance);
+			* append the results to the running data set;
+			proc append base = &contrastDataSet data = tmpSimContrasts force; run;
+			ods results;
+			ods exclude none;
+		endsubmit;
+		end;
+
+		* put the SAS environment back the way we found it;
+		submit contrastDataSet empiricalPowerDataSet;
+		data &contrastDataSet;
+		  set &contrastDataSet;
+		  reject = (probf < 0.05);
+		run;
+		proc freq data=&contrastDataSet;
+			tables reject / out=&empiricalPowerDataSet;
+		run;
+		* stupid BS since the dynamic name only works on 64bit SAS;
+		data temp;
+			set &empiricalPowerDataSet;
+			where reject = 1;
+			keep percent;
+		run;
+		endsubmit;
+
+		use temp;
+		read all into empiricalPower;
+		close temp;
+
+		* remove the temp data set;
+		call delete("work", "temp"); 
+
+		* convert to a decimal from a percent;
+		empiricalPower = empiricalPower / 100;
 	finish;
 								
 	* load the parameter data into a matrix;
-	paramNames={"targetPower" "covariance" "missingType" "missingPercent" "perGroupN" 
+	paramNames={"targetPower" "monotone" "covarCS" "covarCSH" "covarAR1" 
+				"missingPercent" "perGroupN" 
 				"numGroups" "maxObservations" "betaScale"};
 	use longitudinalParams;
-  	read all into paramList[colname=paramNames];
+  	read all var{"targetPower" "monotone" "covarCS" "covarCSH" "covarAR1" 
+				"missingPercent" "perGroupN" 
+				"numGroups" "maxObservations" "betaScale"} into paramList[colname=paramNames];
 
+	print paramList;
+	
+	call randseed(1546); 
 	do i=1 to NROW(paramList);
 		print ("Case: " + strip(char(i)));
 
-		call longitEmpiricalPower(paramList[i,"covariance"],
-							paramList[i,"missingType"],
+		run longitEmpiricalPower(10000, 500, "work", "simData",
+							paramList[i,"monotone"],
+							paramList[i,"covarCS"],
+							paramList[i,"covarCSH"],
+							paramList[i,"covarAR1"],
+							paramList[i,"maxObservations"], 
 							paramList[i,"missingPercent"],
 							paramList[i,"perGroupN"], 
 							paramList[i,"numGroups"],
-							paramList[i,"maxObservations"], 
 							paramList[i,"betaScale"],
 							empiricalPower);
 		empiricalPowerResults = empiricalPowerResults // empiricalPower;
