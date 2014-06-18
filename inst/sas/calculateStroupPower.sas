@@ -10,6 +10,129 @@
 
 %include "common.sas";
 
+%macro longit2GroupExemplary(betaScale, covariance, missingType, numComplete, numIncomplete);
+
+  * create exemplary data for complete cases;
+  data complete;
+    input y subjectID trt1_rep1 trt1_rep2 trt1_rep3 trt1_rep4 trt1_rep5
+  			trt2_rep1 trt2_rep2 trt2_rep3 trt2_rep4 trt2_rep5;
+    do i = 1 to numComplete;  
+      output;
+    end;
+    datalines
+    &betaScale 1 0 0 0 0 0 0 0 0 0
+             0 0 1 0 0 0 0 0 0 0 0 
+             0 0 0 1 0 0 0 0 0 0 0
+             0 0 0 0 1 0 0 0 0 0 0
+             0 0 0 0 0 1 0 0 0 0 0
+             0 0 0 0 0 0 1 0 0 0 0
+             0 0 0 0 0 0 0 1 0 0 0
+             0 0 0 0 0 0 0 0 1 0 0
+             0 0 0 0 0 0 0 0 0 1 0
+             0 0 0 0 0 0 0 0 0 0 1
+    ;
+  run;
+
+  * create exemplary data for incomplete cases;
+  %if &missingType = "monotone" %then %do;
+    data incomplete;
+      do i = 1 to numIncomplete;  
+        output;
+      end;
+      datalines
+      &betaScale 1 0 0 0 0 0 0 0 0 0
+               0 0 1 0 0 0 0 0 0 0 0 
+               0 0 0 1 0 0 0 0 0 0 0
+               0 0 0 0 0 0 1 0 0 0 0
+               0 0 0 0 0 0 0 1 0 0 0
+               0 0 0 0 0 0 0 0 1 0 0
+      ;
+    run;
+
+  %end;
+  %else %do;
+    data incomplete;
+      do i = 1 to numIncomplete;  
+        output;
+      end;
+      datalines
+      &betaScale 1 0 0 0 0 0 0 0 0 0
+               0 0 0 1 0 0 0 0 0 0 0
+               0 0 0 0 0 1 0 0 0 0 0
+               0 0 0 0 0 0 1 0 0 0 0
+               0 0 0 0 0 0 0 0 1 0 0
+               0 0 0 0 0 0 0 0 0 0 1
+      ;
+    run;
+
+  %end;
+
+  * combine the complete and incomplete cases;
+  data exemplaryData;
+    set complete incomplete;
+  run;
+
+  * fit the mixed model with the appropriate covariance parameters;
+  %if &covariance = "CS" %then %do;
+    proc mixed data=&datasetName;
+  		model y = trt1_rep1 trt1_rep2 trt1_rep3 trt1_rep4 trt1_rep5
+  				trt2_rep1 trt2_rep2 trt2_rep3 trt2_rep4 trt2_rep5 / noint solution ddfm=kr;
+  		repeated / subject=subjectID type=CS;
+      parms 1 0.4 / noiter;
+  		contrast "time by treatment"
+  			trt1_rep1 1 trt1_rep2 -1 trt2_rep1 -1 trt2_rep2 1,
+  			trt1_rep1 1 trt1_rep3 -1 trt2_rep1 -1 trt2_rep3 1,
+  			trt1_rep1 1 trt1_rep4 -1 trt2_rep1 -1 trt2_rep4 1,
+  			trt1_rep1 1 trt1_rep5 -1 trt2_rep1 -1 trt2_rep5 1;
+      ods output contrasts=contrasts;
+  	run;
+  %end;
+  %if &covariance = "CSH" %then %do;
+    proc mixed data=&datasetName;
+    	model y = trt1_rep1 trt1_rep2 trt1_rep3 trt1_rep4 trt1_rep5
+  				trt2_rep1 trt2_rep2 trt2_rep3 trt2_rep4 trt2_rep5 / noint solution ddfm=kr;
+  		repeated / subject=subjectID type=CSH;
+      parms 1,0.5,0.3,0.1,0.1 0.4 / noiter;
+  		contrast "time by treatment"
+  			trt1_rep1 1 trt1_rep2 -1 trt2_rep1 -1 trt2_rep2 1,
+  			trt1_rep1 1 trt1_rep3 -1 trt2_rep1 -1 trt2_rep3 1,
+  			trt1_rep1 1 trt1_rep4 -1 trt2_rep1 -1 trt2_rep4 1,
+  			trt1_rep1 1 trt1_rep5 -1 trt2_rep1 -1 trt2_rep5 1;
+      ods output contrasts=contrasts;
+  	run;
+  %end;
+  %if &covariance = "AR(1)" %then %do;
+    proc mixed data=&datasetName;
+    	model y = trt1_rep1 trt1_rep2 trt1_rep3 trt1_rep4 trt1_rep5
+  				trt2_rep1 trt2_rep2 trt2_rep3 trt2_rep4 trt2_rep5 / noint solution ddfm=kr;
+  		repeated / subject=subjectID type=AR(1);
+      parms 1 0.4 / noiter;
+  		contrast "time by treatment"
+  			trt1_rep1 1 trt1_rep2 -1 trt2_rep1 -1 trt2_rep2 1,
+  			trt1_rep1 1 trt1_rep3 -1 trt2_rep1 -1 trt2_rep3 1,
+  			trt1_rep1 1 trt1_rep4 -1 trt2_rep1 -1 trt2_rep4 1,
+  			trt1_rep1 1 trt1_rep5 -1 trt2_rep1 -1 trt2_rep5 1;
+      ods output contrasts=contrasts;
+  	run;
+  %end;
+  
+  * calculate power;
+  data power;
+    set contrasts;
+    Noncen = NumDF * FValue;
+    Alpha = 0.05;
+    FCrit = finv(1 - alpha, NumDF, DenDF,0);
+    Power = 1 - probf(FCrit, NumDF, DenDF, Noncen);
+    call symput('exemplaryPower',power);
+  run;
+   
+%mend; /* end longit2GroupExemplary */
+
+%macro longit4GroupExemplary(betaScale, covariance, missingType, missingPercent,
+                            perGroupN);
+  
+%mend; /* end longit4GroupExemplary */
+
 * define the mixed model fitting macro for 2 group 5 repeated measures design; 
 %macro longit2Group5Rm(datasetName, covariance);
 	proc mixed data=&datasetName;

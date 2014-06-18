@@ -312,7 +312,7 @@ generateDesignsForManuscript = function(output.data.dir=".") {
   # write the parameter data to a csv file
   write.csv(paramComboList, 
             file=paste(c(output.data.dir,"longitudinalParams.csv"),collapse="/"),
-            row.names=FALSE, eol="\r\n")
+            row.names=FALSE)
   # write the designs to an Rdata file
   save(longitudinalDesignList, 
        file=paste(c(output.data.dir,"longitudinalDesigns.RData"),collapse="/"))
