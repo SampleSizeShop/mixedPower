@@ -1,16 +1,24 @@
 /*
 *
-* Cluster randomized designs with four treatments
+* Calculates power for a set of longitudinal study designs
+* using the exemplary data method described by:
+* 
+* Stroup, W. W. (2013). Generalized linear mixed models: modern concepts, methods and applications.
+* (see Chapter 16)
 *
-* We vary the following parameters
-*  per group N: 10, 40
-*  cluster size: 5, 50, 500
-*  missing percent (in 50% of ISUs): 0%, 10%, 20%, 40%
+* Power results are used in the validation experiment in the manuscript:
+*
+* Kreidler, S. M., Muller, K. E., & Glueck, D. H. 
+* A Power Approximation for Longitudinal Studies Using the 
+* Kenward and Roger Wald Test in the Linear Mixed Model, In review.
 */
 
 %include "common.sas";
 
-
+/*
+* Calculate exemplary power for longitudinal designs with 
+* 2 treatment groups
+*/
 %macro longit2GroupExemplary(case, betaScale, covariance, missingType, numComplete, numIncomplete,
 	powerDataSet);
 
@@ -47,10 +55,10 @@
 	  %if %quote(&missingType) = %quote(monotone) %then %do;
 		  data incomplete;
 			do grp = 1 to 2;
-			  do isu = (&numComplete * 2) to ((&numComplete*2) + &numIncomplete); 
+			  do isu = 1 to &numIncomplete; 
 			    do rep = 1 to 3;
 					y = &betaScale * (grp = 1 & rep = 1);
-					subjectID = 10 + ((grp-1) * 5) + isu;
+					subjectID = (2 * &numComplete) + ((grp-1) * &numIncomplete) + isu;
 					trt1_rep1 = (grp = 1 & rep = 1);
 					trt1_rep2 = (grp = 1 & rep = 2);
 					trt1_rep3 = (grp = 1 & rep = 3);
@@ -72,10 +80,10 @@
 	  	* non-monotone pattern;
 	  	  data incomplete;
 			do grp = 1 to 2;
-			  do isu = (&numComplete * 2) to ((&numComplete*2) + &numIncomplete); 
+			  do isu = 1 to &numIncomplete; 
 			    do rep = 1,3,5;
 					y = &betaScale * (grp = 1 & rep = 1);
-					subjectID = 10 + ((grp-1) * 5) + isu;
+					subjectID = (2 * &numComplete) + ((grp-1) * &numIncomplete) + isu;
 					trt1_rep1 = (grp = 1 & rep = 1);
 					trt1_rep2 = (grp = 1 & rep = 2);
 					trt1_rep3 = (grp = 1 & rep = 3);
@@ -168,6 +176,10 @@
    
 %mend; /* end longit2GroupExemplary */
 
+/*
+* Calculate exemplary power for longitudinal designs with 
+* 4 treatment groups
+*/
 %macro longit4GroupExemplary(case, betaScale, covariance, missingType, missingPercent,
                             perGroupN, powerDataSet);
 	%put complete: &numComplete, incomplete: &numIncomplete;
@@ -215,13 +227,13 @@
 
   * create exemplary data for incomplete cases;
   %if &numIncomplete > 0 %then %do;
-	  %if &missingType = "monotone" %then %do;
+	  %if %quote(&missingType) = %quote(monotone) %then %do;
 		  data incomplete;
-			do grp = 1 to 2;
-			  do isu = (&numComplete * 4) to ((&numComplete*4) + &numIncomplete); 
+			do grp = 1 to 4;
+			  do isu = 1 to &numIncomplete; 
 			    do rep = 1 to 3;
 					y = &betaScale * (grp = 1 & rep = 1);
-					subjectID = ((grp-1) * &numComplete) + isu;
+					subjectID = (4 * &numComplete) + ((grp-1) * &numIncomplete) + isu;
 					trt1_rep1 = (grp = 1 & rep = 1);
 					trt1_rep2 = (grp = 1 & rep = 2);
 					trt1_rep3 = (grp = 1 & rep = 3);
@@ -252,11 +264,11 @@
 	  %else %do;
 	  	* non-monotone pattern;
 	  	  data incomplete;
-			do grp = 1 to 2;
-			  do isu = (&numComplete * 4) to ((&numComplete*4) + &numIncomplete); 
+			do grp = 1 to 4;
+			  do isu = 1 to &numIncomplete; 
 			    do rep = 1,3,5;
 					y = &betaScale * (grp = 1 & rep = 1);
-					subjectID = ((grp-1) * &numComplete) + isu;
+					subjectID = (4 * &numComplete) + ((grp-1) * &numIncomplete) + isu;
 					trt1_rep1 = (grp = 1 & rep = 1);
 					trt1_rep2 = (grp = 1 & rep = 2);
 					trt1_rep3 = (grp = 1 & rep = 3);
@@ -298,14 +310,28 @@
 	proc glimmix data=exemplaryData;
 		class subjectID;
     	model y = trt1_rep1 trt1_rep2 trt1_rep3 trt1_rep4 trt1_rep5
-  				trt2_rep1 trt2_rep2 trt2_rep3 trt2_rep4 trt2_rep5 / noint solution ddfm=residual;
+  				trt2_rep1 trt2_rep2 trt2_rep3 trt2_rep4 trt2_rep5 
+				trt3_rep1 trt3_rep2 trt3_rep3 trt3_rep4 trt3_rep5 
+				trt4_rep1 trt4_rep2 trt4_rep3 trt4_rep4 trt4_rep5 
+		/ noint solution ddfm=residual;
   		random _residual_ / subject=subjectID type=CS;
 	    parms (1) (0.4) / hold=1,2;
   		contrast "time by treatment"
   			trt1_rep1 1 trt1_rep2 -1 trt2_rep1 -1 trt2_rep2 1,
   			trt1_rep1 1 trt1_rep3 -1 trt2_rep1 -1 trt2_rep3 1,
   			trt1_rep1 1 trt1_rep4 -1 trt2_rep1 -1 trt2_rep4 1,
-  			trt1_rep1 1 trt1_rep5 -1 trt2_rep1 -1 trt2_rep5 1;
+  			trt1_rep1 1 trt1_rep5 -1 trt2_rep1 -1 trt2_rep5 1,
+
+			trt1_rep1 1 trt1_rep2 -1 trt3_rep1 -1 trt3_rep2 1,
+  			trt1_rep1 1 trt1_rep3 -1 trt3_rep1 -1 trt3_rep3 1,
+  			trt1_rep1 1 trt1_rep4 -1 trt3_rep1 -1 trt3_rep4 1,
+  			trt1_rep1 1 trt1_rep5 -1 trt3_rep1 -1 trt3_rep5 1,
+
+			trt1_rep1 1 trt1_rep2 -1 trt4_rep1 -1 trt4_rep2 1,
+  			trt1_rep1 1 trt1_rep3 -1 trt4_rep1 -1 trt4_rep3 1,
+  			trt1_rep1 1 trt1_rep4 -1 trt4_rep1 -1 trt4_rep4 1,
+  			trt1_rep1 1 trt1_rep5 -1 trt4_rep1 -1 trt4_rep5 1
+		;
 	    ods output contrasts=tmpContrasts;
 	run;
   %end;
@@ -313,14 +339,28 @@
     proc glimmix data=exemplaryData;
 		class subjectID;
     	model y = trt1_rep1 trt1_rep2 trt1_rep3 trt1_rep4 trt1_rep5
-  				trt2_rep1 trt2_rep2 trt2_rep3 trt2_rep4 trt2_rep5 / noint solution ddfm=residual;
+  				trt2_rep1 trt2_rep2 trt2_rep3 trt2_rep4 trt2_rep5 
+				trt3_rep1 trt3_rep2 trt3_rep3 trt3_rep4 trt3_rep5 
+				trt4_rep1 trt4_rep2 trt4_rep3 trt4_rep4 trt4_rep5 
+		/ noint solution ddfm=residual;
   		random _residual_ / subject=subjectID type=CSH;
       parms (1) (0.5) (0.3) (0.1) (0.1) (0.4) / hold=1,2,3,4,5,6;
   		contrast "time by treatment"
   			trt1_rep1 1 trt1_rep2 -1 trt2_rep1 -1 trt2_rep2 1,
   			trt1_rep1 1 trt1_rep3 -1 trt2_rep1 -1 trt2_rep3 1,
   			trt1_rep1 1 trt1_rep4 -1 trt2_rep1 -1 trt2_rep4 1,
-  			trt1_rep1 1 trt1_rep5 -1 trt2_rep1 -1 trt2_rep5 1;
+  			trt1_rep1 1 trt1_rep5 -1 trt2_rep1 -1 trt2_rep5 1,
+
+			trt1_rep1 1 trt1_rep2 -1 trt3_rep1 -1 trt3_rep2 1,
+  			trt1_rep1 1 trt1_rep3 -1 trt3_rep1 -1 trt3_rep3 1,
+  			trt1_rep1 1 trt1_rep4 -1 trt3_rep1 -1 trt3_rep4 1,
+  			trt1_rep1 1 trt1_rep5 -1 trt3_rep1 -1 trt3_rep5 1,
+
+			trt1_rep1 1 trt1_rep2 -1 trt4_rep1 -1 trt4_rep2 1,
+  			trt1_rep1 1 trt1_rep3 -1 trt4_rep1 -1 trt4_rep3 1,
+  			trt1_rep1 1 trt1_rep4 -1 trt4_rep1 -1 trt4_rep4 1,
+  			trt1_rep1 1 trt1_rep5 -1 trt4_rep1 -1 trt4_rep5 1
+		;
 		ods output contrasts=tmpContrasts;
   	run;
   %end;
@@ -328,14 +368,28 @@
     proc glimmix data=exemplaryData;
 		class subjectID;
     	model y = trt1_rep1 trt1_rep2 trt1_rep3 trt1_rep4 trt1_rep5
-  				trt2_rep1 trt2_rep2 trt2_rep3 trt2_rep4 trt2_rep5 / noint solution ddfm=residual;
+  				trt2_rep1 trt2_rep2 trt2_rep3 trt2_rep4 trt2_rep5 
+				trt3_rep1 trt3_rep2 trt3_rep3 trt3_rep4 trt3_rep5 
+				trt4_rep1 trt4_rep2 trt4_rep3 trt4_rep4 trt4_rep5 
+		/ noint solution ddfm=residual;
   		random _residual_ / subject=subjectID type=AR(1);
       parms (1) (0.4) / hold=1,2;
   		contrast "time by treatment"
   			trt1_rep1 1 trt1_rep2 -1 trt2_rep1 -1 trt2_rep2 1,
   			trt1_rep1 1 trt1_rep3 -1 trt2_rep1 -1 trt2_rep3 1,
   			trt1_rep1 1 trt1_rep4 -1 trt2_rep1 -1 trt2_rep4 1,
-  			trt1_rep1 1 trt1_rep5 -1 trt2_rep1 -1 trt2_rep5 1;
+  			trt1_rep1 1 trt1_rep5 -1 trt2_rep1 -1 trt2_rep5 1,
+
+			trt1_rep1 1 trt1_rep2 -1 trt3_rep1 -1 trt3_rep2 1,
+  			trt1_rep1 1 trt1_rep3 -1 trt3_rep1 -1 trt3_rep3 1,
+  			trt1_rep1 1 trt1_rep4 -1 trt3_rep1 -1 trt3_rep4 1,
+  			trt1_rep1 1 trt1_rep5 -1 trt3_rep1 -1 trt3_rep5 1,
+
+			trt1_rep1 1 trt1_rep2 -1 trt4_rep1 -1 trt4_rep2 1,
+  			trt1_rep1 1 trt1_rep3 -1 trt4_rep1 -1 trt4_rep3 1,
+  			trt1_rep1 1 trt1_rep4 -1 trt4_rep1 -1 trt4_rep4 1,
+  			trt1_rep1 1 trt1_rep5 -1 trt4_rep1 -1 trt4_rep5 1
+		;
 		ods output contrasts=tmpContrasts;
   	run;
   %end;
@@ -354,7 +408,7 @@
 
   PROC datasets; 
   	append base=&powerDataSet data=power force; 
-	delete complete incomplete;
+	*delete complete incomplete;
   quit;
 
 %mend; /* end longit4GroupExemplary */
@@ -390,7 +444,7 @@ proc datasets;
 	delete exemplaryPower;
 quit;
 data _null_;
-	set longitudinalParams;*(firstobs=109 obs=109);
+	set longitudinalParams;*(firstobs=136 obs=136);
 	call execute('%longitExemplary(' || _N_ || ',' || betaScale || ',' || covariance || ',' || missingType || 
 					',' || missingPercent || ',' || perGroupN || ',' || numGroups || ', exemplaryPower)');
 run;
