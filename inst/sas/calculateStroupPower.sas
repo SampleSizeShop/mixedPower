@@ -112,10 +112,10 @@
   ods exclude all;
   ods noresults;
   %if %quote(&covariance) = CS %then %do;
-	proc glimmix data=exemplaryData;
+	proc glimmix data=exemplaryData noprofile;
 		class subjectID;
     	model y = trt1_rep1 trt1_rep2 trt1_rep3 trt1_rep4 trt1_rep5
-  				trt2_rep1 trt2_rep2 trt2_rep3 trt2_rep4 trt2_rep5 / noint solution ddfm=residual;
+  				trt2_rep1 trt2_rep2 trt2_rep3 trt2_rep4 trt2_rep5 / noint solution ddfm=bw;
   		random _residual_ / subject=subjectID type=CS;
 	    parms (1) (0.4) / hold=1,2;
   		contrast "time by treatment"
@@ -127,10 +127,10 @@
 	run;
   %end;
   %if %quote(&covariance) = CSH %then %do;
-    proc glimmix data=exemplaryData;
+    proc glimmix data=exemplaryData noprofile;
 		class subjectID;
     	model y = trt1_rep1 trt1_rep2 trt1_rep3 trt1_rep4 trt1_rep5
-  				trt2_rep1 trt2_rep2 trt2_rep3 trt2_rep4 trt2_rep5 / noint solution ddfm=residual;
+  				trt2_rep1 trt2_rep2 trt2_rep3 trt2_rep4 trt2_rep5 / noint solution ddfm=bw;
   		random _residual_ / subject=subjectID type=CSH;
       parms (1) (0.5) (0.3) (0.1) (0.1) (0.4) / hold=1,2,3,4,5,6;
   		contrast "time by treatment"
@@ -142,10 +142,10 @@
   	run;
   %end;
   %if %quote(&covariance) = %quote(AR(1)) %then %do;
-    proc glimmix data=exemplaryData;
+    proc glimmix data=exemplaryData noprofile;
 		class subjectID;
     	model y = trt1_rep1 trt1_rep2 trt1_rep3 trt1_rep4 trt1_rep5
-  				trt2_rep1 trt2_rep2 trt2_rep3 trt2_rep4 trt2_rep5 / noint solution ddfm=residual;
+  				trt2_rep1 trt2_rep2 trt2_rep3 trt2_rep4 trt2_rep5 / noint solution ddfm=bw;
   		random _residual_ / subject=subjectID type=AR(1);
       parms (1) (0.4) / hold=1,2;
   		contrast "time by treatment"
@@ -307,13 +307,13 @@
   ods exclude all;
   ods noresults;
   %if %quote(&covariance) = CS %then %do;
-	proc glimmix data=exemplaryData;
+	proc glimmix data=exemplaryData noprofile;
 		class subjectID;
     	model y = trt1_rep1 trt1_rep2 trt1_rep3 trt1_rep4 trt1_rep5
   				trt2_rep1 trt2_rep2 trt2_rep3 trt2_rep4 trt2_rep5 
 				trt3_rep1 trt3_rep2 trt3_rep3 trt3_rep4 trt3_rep5 
 				trt4_rep1 trt4_rep2 trt4_rep3 trt4_rep4 trt4_rep5 
-		/ noint solution ddfm=residual;
+		/ noint solution ddfm=bw;
   		random _residual_ / subject=subjectID type=CS;
 	    parms (1) (0.4) / hold=1,2;
   		contrast "time by treatment"
@@ -336,13 +336,13 @@
 	run;
   %end;
   %if %quote(&covariance) = CSH %then %do;
-    proc glimmix data=exemplaryData;
+    proc glimmix data=exemplaryData noprofile;
 		class subjectID;
     	model y = trt1_rep1 trt1_rep2 trt1_rep3 trt1_rep4 trt1_rep5
   				trt2_rep1 trt2_rep2 trt2_rep3 trt2_rep4 trt2_rep5 
 				trt3_rep1 trt3_rep2 trt3_rep3 trt3_rep4 trt3_rep5 
 				trt4_rep1 trt4_rep2 trt4_rep3 trt4_rep4 trt4_rep5 
-		/ noint solution ddfm=residual;
+		/ noint solution ddfm=bw;
   		random _residual_ / subject=subjectID type=CSH;
       parms (1) (0.5) (0.3) (0.1) (0.1) (0.4) / hold=1,2,3,4,5,6;
   		contrast "time by treatment"
@@ -365,13 +365,13 @@
   	run;
   %end;
   %if %quote(&covariance) = %quote(AR(1)) %then %do;
-    proc glimmix data=exemplaryData;
+    proc glimmix data=exemplaryData noprofile;
 		class subjectID;
     	model y = trt1_rep1 trt1_rep2 trt1_rep3 trt1_rep4 trt1_rep5
   				trt2_rep1 trt2_rep2 trt2_rep3 trt2_rep4 trt2_rep5 
 				trt3_rep1 trt3_rep2 trt3_rep3 trt3_rep4 trt3_rep5 
 				trt4_rep1 trt4_rep2 trt4_rep3 trt4_rep4 trt4_rep5 
-		/ noint solution ddfm=residual;
+		/ noint solution ddfm=bw;
   		random _residual_ / subject=subjectID type=AR(1);
       parms (1) (0.4) / hold=1,2;
   		contrast "time by treatment"
@@ -449,16 +449,21 @@ data _null_;
 					',' || missingPercent || ',' || perGroupN || ',' || numGroups || ', exemplaryPower)');
 run;
 
+data longitudinalExemplaryPower;
+	set longitudinalParams;
+	set exemplaryPower(keep=exemplaryPower);	
+
+run;
 /*
 proc freq data=longitudinalParams;
 	table covariance;
 run;
 */
-/*
+
 * write the temporary empirical power data set to disk as a csv;
-proc export data=longitudinalExemplary
-   outfile="&OUT_DATA_DIR\exemplaryPower.csv"
+proc export data=exemplaryPower
+   outfile="&OUT_DATA_DIR\longitudinalExemplaryPower.csv"
    dbms=csv
    replace;
 run;
-*/
+

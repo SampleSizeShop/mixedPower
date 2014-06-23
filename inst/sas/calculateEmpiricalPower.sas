@@ -411,15 +411,33 @@ proc iml;
 quit;
 
 * append all of the data sets together;
-proc sql noprint;
-   	select strip(libname) || "." || memname into : names separated by '  '
-		from dictionary.tables 
-		where libname='OUTDATA' and memname like 'EMPIRICALPOWERITER%';
-	%put &names;
-   	data longitudinalEmpiricalPower;
-	   set &names;
-	run;
-quit;
+data longitudinalEmpiricalPower;
+	set 
+	outData.empiricalPowerIter1to10
+	outData.empiricalPowerIter11to20
+	outData.empiricalPowerIter21to30
+	outData.empiricalPowerIter31to40
+	outData.empiricalPowerIter41to50
+	outData.empiricalPowerIter51to60
+	outData.empiricalPowerIter61to70
+	outData.empiricalPowerIter71to80
+	outData.empiricalPowerIter81to90
+	outData.empiricalPowerIter91to100
+	outData.empiricalPowerIter101to110
+	outData.empiricalPowerIter111to120
+	outData.empiricalPowerIter121to130
+	outData.empiricalPowerIter131to140
+	outData.empiricalPowerIter141to150
+	outData.empiricalPowerIter151to160
+	outData.empiricalPowerIter161to170
+	outData.empiricalPowerIter171to180
+	outData.empiricalPowerIter181to190
+	outData.empiricalPowerIter191to200
+	outData.empiricalPowerIter201to210
+	outData.empiricalPowerIter211to216
+	;
+run;
+
 * write the temporary empirical power data set to disk as a csv;
 proc export data=longitudinalEmpiricalPower
    outfile="&OUT_DATA_DIR\longitudinalEmpiricalPower.csv"
