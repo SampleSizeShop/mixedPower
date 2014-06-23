@@ -449,6 +449,7 @@ data _null_;
 					',' || missingPercent || ',' || perGroupN || ',' || numGroups || ', exemplaryPower)');
 run;
 
+* merge the power results with the input parameters;
 data longitudinalExemplaryPower;
 	set longitudinalParams;
 	set exemplaryPower(keep=exemplaryPower);	
@@ -461,7 +462,7 @@ run;
 */
 
 * write the temporary empirical power data set to disk as a csv;
-proc export data=exemplaryPower
+proc export data=longitudinalExemplaryPower
    outfile="&OUT_DATA_DIR\longitudinalExemplaryPower.csv"
    dbms=csv
    replace;

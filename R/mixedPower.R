@@ -11,28 +11,6 @@
 #
 #
 
-
-#
-#
-#
-mixedPower.stroup <- function(design, glh) {
-  # create an exemplary data set
-  
-  # write the exemplary data to disk
-  
-  # write the SAS code to fit the exemplary data and calculate power
-  
-  
-  # run the SAS code
-  
-  # read the resulting power result
-  
-  # cleanup the temporary files
-  
-  # return the power value
-    
-}
-
 #
 # Helms power approximation for mixed models
 #

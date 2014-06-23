@@ -17,6 +17,75 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #
 
+#' convertToMultivariateDesign
+#' 
+#' Create a multivariate design (design.glmmF object) equivalent to the specified
+#' mixed model design if all sampling units had complete data.
+#' Please note that this is NOT a general purpose function,
+#' but makes assumptions specific to the validation study in the
+#' manuscript
+#' 
+#' Kreidler, S. M., Muller, K. E., & Glueck, D. H. 
+#' A Power Approximation for Longitudinal Studies Using the 
+#' Kenward and Roger Wald Test in the Linear Mixed Model, In review.
+#' 
+convertToMultivariateDesign <- function(mixedDesign) {
+  
+  # determine the number of unique treatment groups
+  numGroups = length(unique(sapply(mixedDesign@xPatternList, function(x) {
+    return(x@group)
+  })))
+  
+  # get the number of sampling units per group
+  perGroupN = sum(sapply(mixedDesign@xPatternList, function(pattern) {
+    if (pattern@group == 1) {
+      return(pattern@size)
+    } else {
+      return(0)
+    }
+  }))
+  
+  Beta = matrix(rep(0,numGroups*5), nrow=numGroups)
+  Beta[1,1] = mixedDesign@beta[1,1]
+  return(new("design.glmmF", name=mixedDesign@name,
+             description=mixedDesign@description,
+             XEssence=diag(numGroups),
+             perGroupN=perGroupN,
+             Beta=Beta,
+             SigmaError=mixedDesign@Sigma))
+}
+
+#' convertToMultivariateGLH
+#' 
+#' Create a multivariate linear hypothesis (glh object) equivalent to the specified
+#' mixed model hypothesis if all sampling units had complete data.
+#' Please note that this is NOT a general purpose function,
+#' but makes assumptions specific to the validation study in the
+#' manuscript
+#' 
+#' Kreidler, S. M., Muller, K. E., & Glueck, D. H. 
+#' A Power Approximation for Longitudinal Studies Using the 
+#' Kenward and Roger Wald Test in the Linear Mixed Model, In review.
+#' 
+convertToMultivariateGLH <- function(mixedGLH) {
+  # assumes a time x treatment interaction with 5 repeated measures
+  numGroups = ncol(mixedGLH@fixedContrast) / 5
+  if (numGroups == 2) {
+    betweenContrast = matrix(c(1,-1),nrow=1)
+  } else {
+    # 4 groups
+    betweenContrast = cbind(matrix(rep(1,3),nrow=3), -1*diag(3))
+  }
+  withinContrast = t(cbind(matrix(rep(1,4),nrow=4), -1*diag(4)))
+  
+  thetaNull.rows = nrow(betweenContrast)
+  thetaNull.columns = ncol(withinContrast)
+
+  return(new("glh", alpha=mixedGLH@alpha,
+             betweenContrast=betweenContrast, withinContrast=withinContrast,
+             thetaNull=matrix(rep(0,thetaNull.rows*thetaNull.columns), nrow=thetaNull.rows)))
+}
+
 #' heterogeneousCS
 #' 
 #' generate a heterogeneous compound symmetric covariance matrix.
@@ -335,20 +404,62 @@ generateDesignsForManuscript = function(output.data.dir=".") {
 #' @param output.data.dir directory to which empirical power data files are written
 #'
 calculateEmpiricalPowerWithSAS <- function(output.data.dir) {
+  # generate the common.sas file
+  
   # call the sas code to run empirical power
   result <- system(paste(c("sas.exe -i ", 
                            paste(c(path.package("mixedPower"), 
                                    "inst/sas/calculateEmpiricalPower.sas"), 
                                  collapse="/")), collapse=""), 
                    intern = TRUE, show.output.on.console = TRUE)
+  # remove common.sas file
+  
   
   # load the empirical power results
   empiricalPowerData = read.csv(
-    paste(c(path.package("mixedPower"), "inst/sas/empiricalPower.csv"), collapse="/"),
+    paste(c(output.data.dir, "longitudinalEmpiricalPower.csv"), collapse="/"),
     stringsAsFactors=FALSE)
 
   # save as a Rdata file
-  save(empiricalPowerData, file=paste(c(output.data.dir, "empiricalPower.RData"), collapse="/"))
+  save(empiricalPowerData, file=paste(c(output.data.dir, "longitudinalEmpiricalPower.RData"), collapse="/"))
+  
+  return(empiricalPowerData)
+}
+
+#' 
+#' calculateExemplaryPowerWithSAS
+#' 
+#' Calls a SAS program included in the mixedPower package to
+#' generate the exemplary power results for the validation experiment
+#' in the manuscript
+#' 
+#' Kreidler, S. M., Muller, K. E., & Glueck, D. H. 
+#' A Power Approximation for Longitudinal Studies Using the 
+#' Kenward and Roger Wald Test in the Linear Mixed Model, In review.
+#'   
+#' @param output.data.dir directory to which exemplary power data files are written
+#'
+calculateExemplaryPowerWithSAS <- function(output.data.dir) {
+  # generate the common.sas file
+  
+  # call the sas code to run empirical power
+  result <- system(paste(c("sas.exe -i ", 
+                           paste(c(path.package("mixedPower"), 
+                                   "inst/sas/calculateStroupPower.sas"), 
+                                 collapse="/")), collapse=""), 
+                   intern = TRUE, show.output.on.console = TRUE)
+  # remove common.sas file
+  
+  
+  # load the empirical power results
+  exemplaryPowerData = read.csv(
+    paste(c(output.data.dir, "longitudinalExemplaryPower.csv"), collapse="/"),
+    stringsAsFactors=FALSE)
+  
+  # save as a Rdata file
+  save(exemplaryPowerData, file=paste(c(output.data.dir, "longitudinalExemplaryPower.RData"), collapse="/"))
+  
+  return(exemplaryPowerData)
 }
 
 #' calculateApproximatePowerForDesignList
@@ -368,7 +479,7 @@ calculateApproximatePowerForDesignList <- function(designList, output.data.dir="
   # I. Methodology and comparison of some full span designs. 
   # Statistics in Medicine, 11(14-15), 1889–1913.
   #
-  approxPowerList = sapply(designList, function(designAndGlh) {
+  helmsPowerList = sapply(designList, function(designAndGlh) {
     return(mixedPower.helms(designAndGlh[[1]], designAndGlh[[2]]))
   })
   
@@ -379,10 +490,10 @@ calculateApproximatePowerForDesignList <- function(designList, output.data.dir="
   # Repeated Measures Applications. Journal of the American Statistical 
   # Association, 87(420), 1209–1226.
   #
-  approxPowerData$power.fixedOnly=sapply(designList, function(x) {
-    multivariateDesign = x[[3]]
-    multivariateHypothesis = x[[4]]
-    return(glmmPower.fixed(newDesign, newHypothesis)) 
+  multivariatePowerList=sapply(designList, function(x) {
+    multivariateDesign = convertToMultivariateDesign(x[[1]])
+    multivariateHypothesis = convertToMultivariateGLH(x[[2]])
+    return(glmmPower.fixed(multivariateDesign, multivariateHypothesis)) 
   })
   
   # add power using the method described by
@@ -391,17 +502,129 @@ calculateApproximatePowerForDesignList <- function(designList, output.data.dir="
   # A Power Approximation for Longitudinal Studies Using the 
   # Kenward and Roger Wald Test in the Linear Mixed Model, In review.
   #
-  approxPowerList = sapply(designList, function(designAndGlh) {
+  kreidlerPowerList = sapply(designList, function(designAndGlh) {
     return(mixedPower(designAndGlh[[1]], designAndGlh[[2]]))
   })
   
+  approxPowerData = data.frame(helmsPower=helmsPowerList,
+                               multivariatePower=multivariatePowerList,
+                               kreidlerPower=kreidlerPowerList)
   ## write the approximate power data to disk     
   save(approxPowerData,
-       file=paste(c(output.data.dir, "approximatePower.RData"), collapse="/"))
+       file=paste(c(output.data.dir, "longitudinalApproximatePower.RData"), collapse="/"))
   
   return(approxPowerData)
 }
 
+#' summarizeResults
+#' 
+#' Generate box plots which summarize the deviations from empirical
+#' power for the approximate methods.
+#'   
+#' @param output.data.dir directory to which data sets are written
+#' @return output.figures.dir directory to which figures are written
+#'
+summarizeResults = function(output.data.dir=".", output.figures.dir=".") {
+  
+  # load the data - creates a variable 'approximateAndEmpiricalPowerData'
+  load(paste(c(output.data.dir, "approximateAndEmpiricalPower.RData"), collapse="/"))
+  
+  # calculate the deviations
+  approximateAndEmpiricalPowerData$diff.kreidler = approximateAndEmpiricalPowerData$kreidlerPower - 
+    approximateAndEmpiricalPowerData$empiricalPower 
+  approximateAndEmpiricalPowerData$diff.helms = approximateAndEmpiricalPowerData$helmsPower - 
+    approximateAndEmpiricalPowerData$empiricalPower 
+  approximateAndEmpiricalPowerData$diff.multivariate = approximateAndEmpiricalPowerData$multivariatePower - 
+    approximateAndEmpiricalPowerData$empiricalPower
+  approximateAndEmpiricalPowerData$diff.stroup = approximateAndEmpiricalPowerData$exemplaryPower - 
+    approximateAndEmpiricalPowerData$empiricalPower
+  
+  # get max absolute deviations
+  maxDeviationData = data.frame(method=c("Kreidler", "Helms", "Multivariate", "Stroup"),
+                                maxDeviation=c(max(abs(approximateAndEmpiricalPowerData$diff.kreidler)),
+                                               max(abs(approximateAndEmpiricalPowerData$diff.helms)),
+                                               max(abs(approximateAndEmpiricalPowerData$diff.multivariate)),
+                                               max(abs(approximateAndEmpiricalPowerData$diff.stroup))))
+  # save the max deviation info to a file
+  save(maxDeviationData,
+       file=paste(c(output.data.dir, "maxDeviationsByMethod.RData"), collapse="/"))
+  
+  # convert to long with factor identifying power method
+  powerDataLong = reshape(approximateAndEmpiricalPowerData, 
+                          varying=c(
+                            "diff.kreidler",
+                            "diff.helms",
+                            "diff.multivariate",
+                            "diff.stroup"
+                          ),
+                          timevar="method",
+                          times = c("Kreidler", "Helms", "Multivariate", "Stroup"),
+                          idvar="id", direction="long")
+  # make 'method' into a factor so we can sort the boxplots
+  powerDataLong$method = factor(powerDataLong$method, 
+                                levels=c("Kreidler", "Helms", "Multivariate", "Stroup"),
+                                labels=c("Kreidler", "Helms", "Multivariate", "Stroup"))
+  
+  
+  
+  
+  # silly me, didn't put the number of covariates in a separate column
+  powerDataLong$numCovar = 
+    ifelse(grepl("1 covar", powerDataLong$designName),
+           1, 
+           ifelse(grepl("3 covar", powerDataLong$designName),
+                  3, 6))
+  
+  # Plot deviation from empirical across all designs
+  pdf(file=paste(c(output.figures.dir, "PowerBoxPlot_Overall.pdf"), collapse="/"), family="Times")
+  par(lab=c(3,3,7))
+  boxplot(diff ~ method, data=powerDataLong, las=1, ylim=c(-0.2,0.2),
+          ylab="Deviation from Empirical Power")
+  abline(h=0,lty=3)
+  dev.off()
+  
+  # plot by number of covariates
+  pdf(file=paste(c(output.figures.dir, "PowerBoxPlot_NumCovar.pdf"), collapse="/"), family="Times")
+  par(mfrow=c(3,1), oma=c(5,1,1,1), mar=c(1,4,0,0), lab=c(3,3,7))
+  boxplot(diff ~ method, data=powerDataLong[powerDataLong$numCovar==1,],
+          xaxt='n', ylim=c(-0.6, 0.2), las=1, 
+          ylab="1 Covariate")
+  boxplot(diff ~ method, data=powerDataLong[powerDataLong$numCovar==3,],
+          xaxt='n', ylim=c(-0.6, 0.2), las=1,
+          ylab="3 Covariates")
+  boxplot(diff ~ method, data=powerDataLong[powerDataLong$numCovar==6,],
+          ylab="6 Covariates", las=1, ylim=c(-0.6, 0.2))
+  dev.off()
+  
+  # plot by small and large sample size
+  pdf(file=paste(c(output.figures.dir, "PowerBoxPlot_PerGroupN.pdf"), collapse="/"), family="Times")
+  par(mfrow=c(2,1), oma=c(5,1,1,1), mar=c(1,4,0,0), lab=c(3,3,7))
+  boxplot(diff ~ method, data=powerDataLong[powerDataLong$perGroupN==10,],
+          xaxt='n', ylim=c(-0.6, 0.2), las=1,
+          ylab="Per Group N = 10")
+  boxplot(diff ~ method, data=powerDataLong[powerDataLong$perGroupN==100,],
+          ylim=c(-0.6, 0.2), las=1,
+          ylab="Per Group N = 100")
+  dev.off()
+  
+  # plot by covariate influence (i.e. SigmaYG-scale)
+  pdf(file=paste(c(output.figures.dir, "PowerBoxPlot_SigmaYG_Scale.pdf"), collapse="/"), family="Times")
+  par(mfrow=c(4,1), oma=c(5,1,1,1), mar=c(1,4,0,0), lab=c(3,3,7))
+  boxplot(diff ~ method, data=powerDataLong[powerDataLong$sigmaYGscale==0.5,],
+          xaxt='n', ylab=expression(bold(Sigma)[YG]-scale == 0.5), las=1,
+          ylim=c(-0.6, 0.2))
+  boxplot(diff ~ method, data=powerDataLong[powerDataLong$sigmaYGscale==1,],
+          xaxt='n', ylab=expression(bold(Sigma)[YG]-scale == 1), las=1,
+          ylim=c(-0.6, 0.2))
+  boxplot(diff ~ method, data=powerDataLong[powerDataLong$sigmaYGscale==1.5,],
+          xaxt='n', ylab=expression(bold(Sigma)[YG]-scale == 1.5), las=1,
+          ylim=c(-0.6, 0.2))
+  boxplot(diff ~ method, data=powerDataLong[powerDataLong$sigmaYGscale==2,],
+          ylab=expression(bold(Sigma)[YG]-scale == 2), las=1,
+          ylim=c(-0.6, 0.2))
+  dev.off()
+  
+}
 
 #' runSimulationStudy
 #' 
@@ -464,8 +687,7 @@ runSimulationStudy <- function(study.seed=5896, study.data.dir=".", study.figure
   cat("### Combining empirical and approximate values into common data set\n")
   approximateAndEmpiricalPowerData = data.frame(approxPowerData, 
                                                 exemplaryPower=exemplaryPowerData$exemplaryPower,
-                                                empiricalPower=empiricalPowerData$empiricalPower,
-                                                empiricalTime=empiricalPowerData$time)
+                                                empiricalPower=empiricalPowerData$empiricalPower)
   # save to disk
   save(approximateAndEmpiricalPowerData,
        file=paste(c(study.data.dir, "approximateAndEmpiricalPower.RData"), collapse="/"))
