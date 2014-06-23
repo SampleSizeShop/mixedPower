@@ -362,10 +362,15 @@ proc iml;
 	*print paramList;
 	
 	call randseed(1546); 
+	start = 1;
+	resultNames = paramNames || "empiricalPower";
+	/*
+	* Calculate empirical power for each 
+	*/
 	do i=1 to NROW(paramList);
 		print ("Case: " + strip(char(i)));
 
-		run longitEmpiricalPower(10000, 250, "work", "simData",
+		run longitEmpiricalPower(10000, 250, "outData", "simData",
 							paramList[i,"monotone"],
 							paramList[i,"covarCS"],
 							paramList[i,"covarCSH"],
@@ -377,23 +382,47 @@ proc iml;
 							paramList[i,"betaScale"],
 							empiricalPower);
 		empiricalPowerResults = empiricalPowerResults // empiricalPower;
+
+		if mod(i,10) = 0 | i = NROW(paramList) then do;
+					* create final result set;
+			results = paramList[start:i,] || empiricalPowerResults;
+			* write power results to a data set;
+			create tmpEmpirical from 
+				results[colname=resultNames];
+			append from results;
+			close tmpEmpirical;
+			free empiricalPowerResults;
+
+		    dataSetName = "outData.empiricalPowerIter" + strip(char(start)) + "to" + strip(char(i));
+			dsList = dsList // dataSetName;
+			  /*
+			  * Change the name of the data set using SAS
+			  */
+			  submit dataSetName;
+				data &dataSetName;
+					set tmpEmpirical;
+				run;
+			  endsubmit;
+			start=i+1;
+		end;
 	end;
 	
-	* create result set;
-	resultNames = paramNames || "empiricalPower";
-	results = paramList || empiricalPowerResults;
-	print results;
-	print resultNames;
-	* write power results to a data set;
-	create longitudinalEmpirical from 
-		results[colname=resultNames];
-	append from results;
-	close longitudinalEmpirical;
+
 quit;
 
+* append all of the data sets together;
+proc sql noprint;
+   	select strip(libname) || "." || memname into : names separated by '  '
+		from dictionary.tables 
+		where libname='OUTDATA' and memname like 'EMPIRICALPOWERITER%';
+	%put &names;
+   	data longitudinalEmpiricalPower;
+	   set &names;
+	run;
+quit;
 * write the temporary empirical power data set to disk as a csv;
-proc export data=longitudinalEmpirical
-   outfile="&OUT_DATA_DIR\longitudinalEmpirical.csv"
+proc export data=longitudinalEmpiricalPower
+   outfile="&OUT_DATA_DIR\longitudinalEmpiricalPower.csv"
    dbms=csv
    replace;
 run;
