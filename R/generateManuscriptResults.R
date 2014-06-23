@@ -378,10 +378,13 @@ generateDesignsForManuscript = function(output.data.dir=".") {
   }
   paramComboList$betaScale = betaScaleList
   
-  # write the parameter data to a csv file
+  # write the parameter data to a csv file and an RData file
   write.csv(paramComboList, 
             file=paste(c(output.data.dir,"longitudinalParams.csv"),collapse="/"),
             row.names=FALSE)
+  save(paramComboList, 
+       file=paste(c(output.data.dir,"longitudinalParams.RData"),collapse="/"))
+  
   # write the designs to an Rdata file
   save(longitudinalDesignList, 
        file=paste(c(output.data.dir,"longitudinalDesigns.RData"),collapse="/"))
@@ -530,6 +533,7 @@ summarizeResults = function(output.data.dir=".", output.figures.dir=".") {
   load(paste(c(output.data.dir, "approximateAndEmpiricalPower.RData"), collapse="/"))
   
   # calculate the deviations
+  approximateAndEmpiricalPowerData$id = 1:length(approximateAndEmpiricalPowerData$targetPower)
   approximateAndEmpiricalPowerData$diff.kreidler = approximateAndEmpiricalPowerData$kreidlerPower - 
     approximateAndEmpiricalPowerData$empiricalPower 
   approximateAndEmpiricalPowerData$diff.helms = approximateAndEmpiricalPowerData$helmsPower - 
@@ -565,16 +569,7 @@ summarizeResults = function(output.data.dir=".", output.figures.dir=".") {
                                 levels=c("Kreidler", "Helms", "Multivariate", "Stroup"),
                                 labels=c("Kreidler", "Helms", "Multivariate", "Stroup"))
   
-  
-  
-  
-  # silly me, didn't put the number of covariates in a separate column
-  powerDataLong$numCovar = 
-    ifelse(grepl("1 covar", powerDataLong$designName),
-           1, 
-           ifelse(grepl("3 covar", powerDataLong$designName),
-                  3, 6))
-  
+    
   # Plot deviation from empirical across all designs
   pdf(file=paste(c(output.figures.dir, "PowerBoxPlot_Overall.pdf"), collapse="/"), family="Times")
   par(lab=c(3,3,7))
@@ -583,46 +578,84 @@ summarizeResults = function(output.data.dir=".", output.figures.dir=".") {
   abline(h=0,lty=3)
   dev.off()
   
-  # plot by number of covariates
-  pdf(file=paste(c(output.figures.dir, "PowerBoxPlot_NumCovar.pdf"), collapse="/"), family="Times")
-  par(mfrow=c(3,1), oma=c(5,1,1,1), mar=c(1,4,0,0), lab=c(3,3,7))
-  boxplot(diff ~ method, data=powerDataLong[powerDataLong$numCovar==1,],
-          xaxt='n', ylim=c(-0.6, 0.2), las=1, 
-          ylab="1 Covariate")
-  boxplot(diff ~ method, data=powerDataLong[powerDataLong$numCovar==3,],
-          xaxt='n', ylim=c(-0.6, 0.2), las=1,
-          ylab="3 Covariates")
-  boxplot(diff ~ method, data=powerDataLong[powerDataLong$numCovar==6,],
-          ylab="6 Covariates", las=1, ylim=c(-0.6, 0.2))
+  # number of groups
+  pdf(file=paste(c(output.figures.dir, "PowerBoxPlot_NumGroups.pdf"), collapse="/"), family="Times")
+  par(mfrow=c(2,1), oma=c(5,1,1,1), mar=c(1,4,0,0), lab=c(3,3,7))
+  boxplot(diff ~ method, data=powerDataLong[powerDataLong$numGroups==2,],
+          xaxt='n', ylim=c(-0.2, 0.2), las=1,
+          ylab="2 treatments")
+  abline(h=0,lty=3)
+  boxplot(diff ~ method, data=powerDataLong[powerDataLong$numGroups==4,],
+          ylim=c(-0.2, 0.2), las=1,
+          ylab="4 treatments")
+  abline(h=0,lty=3)
   dev.off()
   
   # plot by small and large sample size
   pdf(file=paste(c(output.figures.dir, "PowerBoxPlot_PerGroupN.pdf"), collapse="/"), family="Times")
   par(mfrow=c(2,1), oma=c(5,1,1,1), mar=c(1,4,0,0), lab=c(3,3,7))
-  boxplot(diff ~ method, data=powerDataLong[powerDataLong$perGroupN==10,],
-          xaxt='n', ylim=c(-0.6, 0.2), las=1,
-          ylab="Per Group N = 10")
+  boxplot(diff ~ method, data=powerDataLong[powerDataLong$perGroupN==50,],
+          xaxt='n', ylim=c(-0.2, 0.2), las=1,
+          ylab="Per Group N = 50")
+  abline(h=0,lty=3)
   boxplot(diff ~ method, data=powerDataLong[powerDataLong$perGroupN==100,],
-          ylim=c(-0.6, 0.2), las=1,
+          ylim=c(-0.2, 0.2), las=1,
           ylab="Per Group N = 100")
+  abline(h=0,lty=3)
   dev.off()
   
-  # plot by covariate influence (i.e. SigmaYG-scale)
-  pdf(file=paste(c(output.figures.dir, "PowerBoxPlot_SigmaYG_Scale.pdf"), collapse="/"), family="Times")
-  par(mfrow=c(4,1), oma=c(5,1,1,1), mar=c(1,4,0,0), lab=c(3,3,7))
-  boxplot(diff ~ method, data=powerDataLong[powerDataLong$sigmaYGscale==0.5,],
-          xaxt='n', ylab=expression(bold(Sigma)[YG]-scale == 0.5), las=1,
-          ylim=c(-0.6, 0.2))
-  boxplot(diff ~ method, data=powerDataLong[powerDataLong$sigmaYGscale==1,],
-          xaxt='n', ylab=expression(bold(Sigma)[YG]-scale == 1), las=1,
-          ylim=c(-0.6, 0.2))
-  boxplot(diff ~ method, data=powerDataLong[powerDataLong$sigmaYGscale==1.5,],
-          xaxt='n', ylab=expression(bold(Sigma)[YG]-scale == 1.5), las=1,
-          ylim=c(-0.6, 0.2))
-  boxplot(diff ~ method, data=powerDataLong[powerDataLong$sigmaYGscale==2,],
-          ylab=expression(bold(Sigma)[YG]-scale == 2), las=1,
-          ylim=c(-0.6, 0.2))
+  # plot by amount of missing data
+  pdf(file=paste(c(output.figures.dir, "PowerBoxPlot_MissingPercent.pdf"), collapse="/"), family="Times")
+  par(mfrow=c(3,1), oma=c(5,1,1,1), mar=c(1,4,0,0), lab=c(3,3,7))
+  boxplot(diff ~ method, data=powerDataLong[powerDataLong$missingPercent==0,],
+          xaxt='n', ylab="Complete data", las=1,
+          ylim=c(-0.2, 0.2))
+  abline(h=0,lty=3)
+  boxplot(diff ~ method, data=powerDataLong[powerDataLong$missingPercent==0.2,],
+          xaxt='n', ylab="20% Missing", las=1,
+          ylim=c(-0.2, 0.2))
+  abline(h=0,lty=3)
+  boxplot(diff ~ method, data=powerDataLong[powerDataLong$missingPercent==0.4,],
+          xaxt='n', ylab="40% Missing", las=1,
+          ylim=c(-0.2, 0.2))
+  abline(h=0,lty=3)
   dev.off()
+  
+  
+  # plot by covariance
+  pdf(file=paste(c(output.figures.dir, "PowerBoxPlot_MissingPercent.pdf"), collapse="/"), family="Times")
+  par(mfrow=c(3,1), oma=c(5,1,1,1), mar=c(1,4,0,0), lab=c(3,3,7))
+  boxplot(diff ~ method, data=powerDataLong[powerDataLong$covariance=="CS",],
+          xaxt='n', ylab="Compound Symmetry", las=1,
+          ylim=c(-0.2, 0.2))
+  abline(h=0,lty=3)
+  boxplot(diff ~ method, data=powerDataLong[powerDataLong$covariance=="CSH",],
+          xaxt='n', ylab="Heterogeneous CS", las=1,
+          ylim=c(-0.2, 0.2))
+  abline(h=0,lty=3)
+  boxplot(diff ~ method, data=powerDataLong[powerDataLong$covariance=="AR(1)",],
+          xaxt='n', ylab="Auto-regressive", las=1,
+          ylim=c(-0.2, 0.2))
+  abline(h=0,lty=3)
+  dev.off()
+  
+  
+  par(mfrow=c(3,1), oma=c(5,1,1,1), mar=c(1,4,0,0), lab=c(3,3,7))
+  boxplot(diff ~ method, data=powerDataLong[powerDataLong$covariance=="CS" & powerDataLong$missingPercent==0.4
+                                            & powerDataLong$numGroups==4,],
+          xaxt='n', ylab="Compound Symmetry", las=1,
+          ylim=c(-0.1, 0.1))
+  abline(h=0,lty=3)
+  boxplot(diff ~ method, data=powerDataLong[powerDataLong$covariance=="CSH" & powerDataLong$missingPercent==0.4
+                                            & powerDataLong$numGroups==4,],
+          xaxt='n', ylab="Heterogeneous CS", las=1,
+          ylim=c(-0.1, 0.1))
+  abline(h=0,lty=3)
+  boxplot(diff ~ method, data=powerDataLong[powerDataLong$covariance=="AR(1)" & powerDataLong$missingPercent==0.4
+                                            & powerDataLong$numGroups==4,],
+          xaxt='n', ylab="Auto-regressive", las=1,
+          ylim=c(-0.1, 0.1))
+  abline(h=0,lty=3)
   
 }
 
@@ -685,7 +718,8 @@ runSimulationStudy <- function(study.seed=5896, study.data.dir=".", study.figure
   
   # combine the data into a single data set and write to disk
   cat("### Combining empirical and approximate values into common data set\n")
-  approximateAndEmpiricalPowerData = data.frame(approxPowerData, 
+  load(paste(c(output.data.dir,"longitudinalParams.RData"),collapse="/"))
+  approximateAndEmpiricalPowerData = data.frame(paramComboList, approxPowerData, 
                                                 exemplaryPower=exemplaryPowerData$exemplaryPower,
                                                 empiricalPower=empiricalPowerData$empiricalPower)
   # save to disk
