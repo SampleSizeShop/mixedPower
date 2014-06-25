@@ -572,7 +572,7 @@ summarizeResults = function(output.data.dir=".", output.figures.dir=".") {
     
   # Plot deviation from empirical across all designs
   pdf(file=paste(c(output.figures.dir, "PowerBoxPlot_Overall.pdf"), collapse="/"), family="Times")
-  par(lab=c(3,3,7))
+  par(mfrow=c(1,1), lab=c(3,3,7))
   boxplot(diff ~ method, data=powerDataLong, las=1, ylim=c(-0.2,0.2),
           ylab="Deviation from Empirical Power")
   abline(h=0,lty=3)
@@ -624,35 +624,36 @@ summarizeResults = function(output.data.dir=".", output.figures.dir=".") {
   
   # plot by covariance
   pdf(file=paste(c(output.figures.dir, "PowerBoxPlot_MissingPercent.pdf"), collapse="/"), family="Times")
+  ylimits = c(-0.1,0.1)
   par(mfrow=c(3,1), oma=c(5,1,1,1), mar=c(1,4,0,0), lab=c(3,3,7))
   boxplot(diff ~ method, data=powerDataLong[powerDataLong$covariance=="CS",],
           xaxt='n', ylab="Compound Symmetry", las=1,
-          ylim=c(-0.2, 0.2))
+          ylim=ylimits)
   abline(h=0,lty=3)
   boxplot(diff ~ method, data=powerDataLong[powerDataLong$covariance=="CSH",],
           xaxt='n', ylab="Heterogeneous CS", las=1,
-          ylim=c(-0.2, 0.2))
+          ylim=ylimits)
   abline(h=0,lty=3)
   boxplot(diff ~ method, data=powerDataLong[powerDataLong$covariance=="AR(1)",],
           xaxt='n', ylab="Auto-regressive", las=1,
-          ylim=c(-0.2, 0.2))
+          ylim=ylimits)
   abline(h=0,lty=3)
   dev.off()
   
+
+  
+  
   
   par(mfrow=c(3,1), oma=c(5,1,1,1), mar=c(1,4,0,0), lab=c(3,3,7))
-  boxplot(diff ~ method, data=powerDataLong[powerDataLong$covariance=="CS" & powerDataLong$missingPercent==0.4
-                                            & powerDataLong$numGroups==4,],
+  boxplot(diff ~ method, data=powerDataLong[powerDataLong$covariance=="CS" & powerDataLong$perGroupN==50,],
           xaxt='n', ylab="Compound Symmetry", las=1,
           ylim=c(-0.1, 0.1))
   abline(h=0,lty=3)
-  boxplot(diff ~ method, data=powerDataLong[powerDataLong$covariance=="CSH" & powerDataLong$missingPercent==0.4
-                                            & powerDataLong$numGroups==4,],
+  boxplot(diff ~ method, data=powerDataLong[powerDataLong$covariance=="CSH" & powerDataLong$perGroupN==50,],
           xaxt='n', ylab="Heterogeneous CS", las=1,
           ylim=c(-0.1, 0.1))
   abline(h=0,lty=3)
-  boxplot(diff ~ method, data=powerDataLong[powerDataLong$covariance=="AR(1)" & powerDataLong$missingPercent==0.4
-                                            & powerDataLong$numGroups==4,],
+  boxplot(diff ~ method, data=powerDataLong[powerDataLong$covariance=="AR(1)" & powerDataLong$perGroupN==50,],
           xaxt='n', ylab="Auto-regressive", las=1,
           ylim=c(-0.1, 0.1))
   abline(h=0,lty=3)
