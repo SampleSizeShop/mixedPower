@@ -296,9 +296,17 @@ generateLongitudinalDesign = function(params) {
     Sigma = heterogeneousCSMatrix(rep(1,maxObservations),rho)
   } else if (params$covariance == 'CSH') {
     Sigma = heterogeneousCSMatrix(c(1,0.5,0.3,0.1,0.1),rho)
-  } else {
+  } else if (params$covariance == 'AR(1)') {
     Sigma = sigmaSq * 
       ar1Matrix(maxObservations,rho)
+  } else {
+    # unstructured - assumes maxObservations is 5 (bad programmer, no cookie for u!)
+    Sigma = sigmaSq * matrix(c(1,0.4,0.2,0.3,0.2,
+                               0.4,1,0.7,0.6,0.7,
+                               0.2,0.7,1,0.6,0.5,
+                               0.3,0.6,0.6,1,0.8,
+                               0.2,0.7,0.5,0.8,1
+                               ), nrow=maxObservations)
   }
   
   # build the design
@@ -340,13 +348,13 @@ generateDesignsForManuscript = function(output.data.dir=".") {
   # number of treatment groups
   numGroupsList = c(2, 4)
   # total ISUs per treatment group
-  perGroupNList = c(50, 100)
+  perGroupNList = c(15, 25, 100)
   # missing data pattern (either monotone or non-monotone)
   missingTypeList = c("monotone", "non-monotone")
   # percent missing
   missingPercentList = c(0, 0.2, 0.4)
   # covariance
-  covarianceList = c("CS", "CSH", "AR(1)")
+  covarianceList = c("CS", "CSH", "AR(1)", "UN")
   # in all cases, we select the scale factor 
   # for beta to achieve the following power
   targetPowerList = c(0.2, 0.5, 0.8)
@@ -363,6 +371,11 @@ generateDesignsForManuscript = function(output.data.dir=".") {
                    maxObservations=maxObservationsList)
   paramComboList = data.frame(expand.grid(paramList))
   
+  # note that the missing data pattern is irrelevant when the missing percent is
+  # 0 (i.e. complete data), so we remove the duplicate cases
+  paramComboList = paramComboList[paramComboList$missingType != "non-monotone" | 
+                                    paramComboList$missingPercent > 0,]
+  
   #
   # Calculate the appropriate betaScale values
   # and build the list of designs
@@ -378,10 +391,16 @@ generateDesignsForManuscript = function(output.data.dir=".") {
   }
   paramComboList$betaScale = betaScaleList
   
-  # write the parameter data to a csv file and an RData file
-  write.csv(paramComboList, 
-            file=paste(c(output.data.dir,"longitudinalParams.csv"),collapse="/"),
-            row.names=FALSE)
+  # write the parameter data to a csv file (for use with SAS) and an RData file
+  if(.Platform$OS.type != "windows") {
+    write.csv(paramComboList, 
+              file=paste(c(output.data.dir,"longitudinalParams.csv"),collapse="/"),
+              row.names=FALSE, eol="\r\n")
+  } else {
+    write.csv(paramComboList, 
+              file=paste(c(output.data.dir,"longitudinalParams.csv"),collapse="/"),
+              row.names=FALSE)
+  }
   save(paramComboList, 
        file=paste(c(output.data.dir,"longitudinalParams.RData"),collapse="/"))
   
