@@ -62,12 +62,13 @@ proc import datafile="&OUT_DATA_DIR\longitudinalParams.csv"
 run; 
 
 data longitudinalParams;
-	set longitudinalParams;
+	set longitudinalParams(obs=60);
 	* make indicators for character data;
 	monotone = (missingType = "monotone");
 	covarCS = (covariance = "CS");
 	covarCSH = (covariance = "CSH");
 	covarAR1 = (covariance = "AR(1)");
+	covarUN = (covariance = "UN");
 run;
 
 /*
@@ -162,8 +163,18 @@ proc iml;
 		else do;
 			if covarCSH then
 				SigmaComplete = heterogeneousCSMatrix({1.0,0.5,0.3,0.1,0.1}, rho);
-			else
-				SigmaComplete = ar1Matrix(maxObservations, rho);
+			else do;
+				if covarAR1 then
+					SigmaComplete = ar1Matrix(maxObservations, rho);
+				else
+					SigmaComplete = {
+						1 0.4 0.2 0.3 0.2,
+                        0.4 1 0.7 0.6 0.7,
+                        0.2 0.7 1 0.6 0.5,
+                        0.3 0.6 0.6 1 0.8,
+                        0.2 0.7 0.5 0.8 1
+						};
+			end;
 		end;
 		if numIncomplete > 0 then
 			SigmaIncomplete = designWithinIncomplete * SigmaComplete * designWithinIncomplete`;

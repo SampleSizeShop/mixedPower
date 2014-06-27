@@ -348,7 +348,7 @@ generateDesignsForManuscript = function(output.data.dir=".") {
   # number of treatment groups
   numGroupsList = c(2, 4)
   # total ISUs per treatment group
-  perGroupNList = c(15, 25, 100)
+  perGroupNList = c(25, 100)
   # missing data pattern (either monotone or non-monotone)
   missingTypeList = c("monotone", "non-monotone")
   # percent missing
@@ -704,7 +704,7 @@ runSimulationStudy <- function(study.seed=5896, study.data.dir=".", study.figure
   
   # generate the designs for the validation study
   cat("### Generating designs and hypotheses\n")
-  designList = generateDesignsForManuscript()
+  designList = generateDesignsForManuscript(output.data.dir=study.data.dir)
   
   # calculate empirical power
   if (study.runEmpirical) {
