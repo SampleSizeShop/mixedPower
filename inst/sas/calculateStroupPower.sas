@@ -156,6 +156,22 @@
 		ods output contrasts=tmpContrasts;
   	run;
   %end;
+    %if %quote(&covariance) = UN %then %do;
+    proc glimmix data=exemplaryData noprofile;
+		class subjectID;
+    	model y = trt1_rep1 trt1_rep2 trt1_rep3 trt1_rep4 trt1_rep5
+  				trt2_rep1 trt2_rep2 trt2_rep3 trt2_rep4 trt2_rep5 / noint solution ddfm=bw;
+  		random _residual_ / subject=subjectID type=UN;
+      parms (1) (0.4) (1) (0.2) (0.7) (1.0) (0.3) (0.6) (0.6) (1.0) (0.2) (0.7) (0.5) (0.8) (1.0)
+			/ hold=1,2,3,4,5,6,7,8,9,10,11,12,13,14,15;
+  		contrast "time by treatment"
+  			trt1_rep1 1 trt1_rep2 -1 trt2_rep1 -1 trt2_rep2 1,
+  			trt1_rep1 1 trt1_rep3 -1 trt2_rep1 -1 trt2_rep3 1,
+  			trt1_rep1 1 trt1_rep4 -1 trt2_rep1 -1 trt2_rep4 1,
+  			trt1_rep1 1 trt1_rep5 -1 trt2_rep1 -1 trt2_rep5 1;
+		ods output contrasts=tmpContrasts;
+  	run;
+  %end;
   ods results;
   ods exclude none;
   
@@ -374,6 +390,36 @@
 		/ noint solution ddfm=bw;
   		random _residual_ / subject=subjectID type=AR(1);
       parms (1) (0.4) / hold=1,2;
+  		contrast "time by treatment"
+  			trt1_rep1 1 trt1_rep2 -1 trt2_rep1 -1 trt2_rep2 1,
+  			trt1_rep1 1 trt1_rep3 -1 trt2_rep1 -1 trt2_rep3 1,
+  			trt1_rep1 1 trt1_rep4 -1 trt2_rep1 -1 trt2_rep4 1,
+  			trt1_rep1 1 trt1_rep5 -1 trt2_rep1 -1 trt2_rep5 1,
+
+			trt1_rep1 1 trt1_rep2 -1 trt3_rep1 -1 trt3_rep2 1,
+  			trt1_rep1 1 trt1_rep3 -1 trt3_rep1 -1 trt3_rep3 1,
+  			trt1_rep1 1 trt1_rep4 -1 trt3_rep1 -1 trt3_rep4 1,
+  			trt1_rep1 1 trt1_rep5 -1 trt3_rep1 -1 trt3_rep5 1,
+
+			trt1_rep1 1 trt1_rep2 -1 trt4_rep1 -1 trt4_rep2 1,
+  			trt1_rep1 1 trt1_rep3 -1 trt4_rep1 -1 trt4_rep3 1,
+  			trt1_rep1 1 trt1_rep4 -1 trt4_rep1 -1 trt4_rep4 1,
+  			trt1_rep1 1 trt1_rep5 -1 trt4_rep1 -1 trt4_rep5 1
+		;
+		ods output contrasts=tmpContrasts;
+  	run;
+  %end;
+    %if %quote(&covariance) = UN %then %do;
+    proc glimmix data=exemplaryData noprofile;
+		class subjectID;
+    	model y = trt1_rep1 trt1_rep2 trt1_rep3 trt1_rep4 trt1_rep5
+  				trt2_rep1 trt2_rep2 trt2_rep3 trt2_rep4 trt2_rep5 
+				trt3_rep1 trt3_rep2 trt3_rep3 trt3_rep4 trt3_rep5 
+				trt4_rep1 trt4_rep2 trt4_rep3 trt4_rep4 trt4_rep5 
+		/ noint solution ddfm=bw;
+  		random _residual_ / subject=subjectID type=UN;
+      parms (1) (0.4) (1) (0.2) (0.7) (1.0) (0.3) (0.6) (0.6) (1.0) (0.2) (0.7) (0.5) (0.8) (1.0)
+			/ hold=1,2,3,4,5,6,7,8,9,10,11,12,13,14,15;
   		contrast "time by treatment"
   			trt1_rep1 1 trt1_rep2 -1 trt2_rep1 -1 trt2_rep2 1,
   			trt1_rep1 1 trt1_rep3 -1 trt2_rep1 -1 trt2_rep3 1,
