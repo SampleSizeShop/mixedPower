@@ -62,7 +62,7 @@ proc import datafile="&OUT_DATA_DIR\longitudinalParams.csv"
 run; 
 
 data longitudinalParams;
-	set longitudinalParams(obs=60);
+	set longitudinalParams;
 	* make indicators for character data;
 	monotone = (missingType = "monotone");
 	covarCS = (covariance = "CS");
@@ -318,7 +318,7 @@ proc iml;
 		do i = 1 to nrow(dsList);
 		* get the data set name;
 		sdCurrent = dsList[i];
-		print sdCurrent;
+		*print sdCurrent;
 		* call proc mixed;
 		submit sdCurrent mixedModMacroName contrastDataSet covariance;
 			ods exclude all;
@@ -374,13 +374,13 @@ proc iml;
 	
 	call randseed(1546); 
 	start = 1;
-	resultNames = paramNames || "empiricalPower";
+	resultNames = paramNames || "empiricalPower" || "empiricalElapsedTime";
 	/*
 	* Calculate empirical power for each 
 	*/
 	do i=1 to NROW(paramList);
 		print ("Case: " + strip(char(i)));
-
+		startTime = time();
 		run longitEmpiricalPower(10000, 250, "outData", "simData",
 							paramList[i,"monotone"],
 							paramList[i,"covarCS"],
@@ -392,7 +392,8 @@ proc iml;
 							paramList[i,"numGroups"],
 							paramList[i,"betaScale"],
 							empiricalPower);
-		empiricalPowerResults = empiricalPowerResults // empiricalPower;
+		empiricalTime = time() - startTime;
+		empiricalPowerResults = empiricalPowerResults // (empiricalPower || empiricalTime);
 
 		if mod(i,10) = 0 | i = NROW(paramList) then do;
 					* create final result set;
@@ -445,7 +446,9 @@ data longitudinalEmpiricalPower;
 	outData.empiricalPowerIter181to190
 	outData.empiricalPowerIter191to200
 	outData.empiricalPowerIter201to210
-	outData.empiricalPowerIter211to216
+	outData.empiricalPowerIter211to220
+	outData.empiricalPowerIter221to230
+	outData.empiricalPowerIter231to240
 	;
 run;
 
