@@ -581,18 +581,18 @@ summarizeResults = function(output.data.dir=".", output.figures.dir=".") {
                             "diff.stroup"
                           ),
                           timevar="method",
-                          times = c("Kreidler", "Helms", "Multivariate", "Stroup"),
+                          times = c("kreidler", "helms", "multivariate", "stroup"),
                           idvar="id", direction="long")
   # make 'method' into a factor so we can sort the boxplots
   powerDataLong$method = factor(powerDataLong$method, 
-                                levels=c("Kreidler", "Helms", "Multivariate", "Stroup"),
-                                labels=c("Kreidler", "Helms", "Multivariate", "Stroup"))
+                                levels=c("kreidler", "helms", "multivariate", "stroup"),
+                                labels=c("Kreidler", "Helms", "Muller", "Stroup"))
   
     
   # Plot deviation from empirical across all designs
   pdf(file=paste(c(output.figures.dir, "PowerBoxPlot_Overall.pdf"), collapse="/"), family="Times")
   par(mfrow=c(1,1), lab=c(3,3,7))
-  boxplot(diff ~ method, data=powerDataLong, las=1, ylim=c(-0.2,0.2),
+  boxplot(diff ~ method, data=powerDataLong[powerDataLong$method != "Stroup",], las=1, ylim=c(-0.5,0.5),
           ylab="Deviation from Empirical Power")
   abline(h=0,lty=3)
   dev.off()
@@ -635,26 +635,56 @@ summarizeResults = function(output.data.dir=".", output.figures.dir=".") {
           ylim=c(-0.2, 0.2))
   abline(h=0,lty=3)
   boxplot(diff ~ method, data=powerDataLong[powerDataLong$missingPercent==0.4,],
-          xaxt='n', ylab="40% Missing", las=1,
+          ylab="40% Missing", las=1,
           ylim=c(-0.2, 0.2))
   abline(h=0,lty=3)
   dev.off()
   
+  # different powers plot
+  par(mfrow=c(3,1), oma=c(5,1,1,1), mar=c(1,4,0,0), lab=c(3,3,7))
+  boxplot(diff ~ method, data=powerDataLong[powerDataLong$targetPower==0.2,],
+          xaxt='n', ylab="Target Power 0.2", las=1,
+          ylim=c(-0.2, 0.2))
+  abline(h=0,lty=3)
+  boxplot(diff ~ method, data=powerDataLong[powerDataLong$targetPower==0.5,],
+          xaxt='n', ylab="Target Power 0.5", las=1,
+          ylim=c(-0.2, 0.2))
+  abline(h=0,lty=3)
+  boxplot(diff ~ method, data=powerDataLong[powerDataLong$targetPower==0.8,],
+          ylab="Target Power 0.8", las=1,
+          ylim=c(-0.2, 0.2))
+  abline(h=0,lty=3)
   
   # plot by covariance
   pdf(file=paste(c(output.figures.dir, "PowerBoxPlot_MissingPercent.pdf"), collapse="/"), family="Times")
-  ylimits = c(-0.1,0.1)
-  par(mfrow=c(3,1), oma=c(5,1,1,1), mar=c(1,4,0,0), lab=c(3,3,7))
-  boxplot(diff ~ method, data=powerDataLong[powerDataLong$covariance=="CS",],
+  ylimits = c(-0.2,0.1)
+  par(mfrow=c(4,1), oma=c(5,1,1,1), mar=c(1,4,0,0), lab=c(3,3,7))
+  boxplot(diff ~ method, data=powerDataLong[powerDataLong$covariance=="CS" &
+                                              powerDataLong$targetPower==0.8 &
+                                              powerDataLong$missingPercent==0.4 &
+                                              powerDataLong$missingType=="non-monotone",],
           xaxt='n', ylab="Compound Symmetry", las=1,
           ylim=ylimits)
   abline(h=0,lty=3)
-  boxplot(diff ~ method, data=powerDataLong[powerDataLong$covariance=="CSH",],
+  boxplot(diff ~ method, data=powerDataLong[powerDataLong$covariance=="CSH" &
+                                              powerDataLong$targetPower==0.8 &
+                                              powerDataLong$missingPercent==0.4 &
+                                              powerDataLong$missingType=="non-monotone",],
           xaxt='n', ylab="Heterogeneous CS", las=1,
           ylim=ylimits)
   abline(h=0,lty=3)
-  boxplot(diff ~ method, data=powerDataLong[powerDataLong$covariance=="AR(1)",],
+  boxplot(diff ~ method, data=powerDataLong[powerDataLong$covariance=="AR(1)" &
+                                              powerDataLong$targetPower==0.8 &
+                                              powerDataLong$missingPercent==0.4 &
+                                              powerDataLong$missingType=="non-monotone",],
           xaxt='n', ylab="Auto-regressive", las=1,
+          ylim=ylimits)
+  abline(h=0,lty=3)
+  boxplot(diff ~ method, data=powerDataLong[powerDataLong$covariance=="UN" &
+                                              powerDataLong$targetPower==0.8 &
+                                              powerDataLong$missingPercent==0.4 &
+                                              powerDataLong$missingType=="non-monotone",],
+           ylab="UN", las=1,
           ylim=ylimits)
   abline(h=0,lty=3)
   dev.off()
@@ -663,18 +693,22 @@ summarizeResults = function(output.data.dir=".", output.figures.dir=".") {
   
   
   
-  par(mfrow=c(3,1), oma=c(5,1,1,1), mar=c(1,4,0,0), lab=c(3,3,7))
-  boxplot(diff ~ method, data=powerDataLong[powerDataLong$covariance=="CS" & powerDataLong$perGroupN==50,],
+  par(mfrow=c(4,1), oma=c(5,1,1,1), mar=c(1,4,0,0), lab=c(3,3,7))
+  boxplot(diff ~ method, data=powerDataLong[powerDataLong$covariance=="CS" & powerDataLong$missingPercent==0.4,],
           xaxt='n', ylab="Compound Symmetry", las=1,
-          ylim=c(-0.1, 0.1))
+          ylim=c(-0.2, 0.2))
   abline(h=0,lty=3)
-  boxplot(diff ~ method, data=powerDataLong[powerDataLong$covariance=="CSH" & powerDataLong$perGroupN==50,],
+  boxplot(diff ~ method, data=powerDataLong[powerDataLong$covariance=="CSH" & powerDataLong$missingPercent==0.4,],
           xaxt='n', ylab="Heterogeneous CS", las=1,
-          ylim=c(-0.1, 0.1))
+          ylim=c(-0.2, 0.2))
   abline(h=0,lty=3)
-  boxplot(diff ~ method, data=powerDataLong[powerDataLong$covariance=="AR(1)" & powerDataLong$perGroupN==50,],
+  boxplot(diff ~ method, data=powerDataLong[powerDataLong$covariance=="AR(1)" & powerDataLong$missingPercent==0.4,],
           xaxt='n', ylab="Auto-regressive", las=1,
-          ylim=c(-0.1, 0.1))
+          ylim=c(-0.2, 0.2))
+  abline(h=0,lty=3)
+  boxplot(diff ~ method, data=powerDataLong[powerDataLong$covariance=="UN" & powerDataLong$missingPercent==0.4,],
+          xaxt='n', ylab="Unstructured", las=1,
+          ylim=c(-0.2, 0.2))
   abline(h=0,lty=3)
   
 }
