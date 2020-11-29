@@ -14,7 +14,7 @@
 # 
 #  You should have received a copy of the GNU General Public License
 #  along with this program; if not, write to the Free Software
-#  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+#  Foundation, Inc., 51 Franklin Streetf, Fifth Floor, Boston, MA  02110-1301, USA.
 #
 
 #' convertToMultivariateDesign
@@ -23,11 +23,7 @@
 #' mixed model design if all sampling units had complete data.
 #' Please note that this is NOT a general purpose function,
 #' but makes assumptions specific to the validation study in the
-#' manuscript
-#' 
-#' Kreidler, S. M., Muller, K. E., & Glueck, D. H. 
-#' A Power Approximation for Longitudinal Studies Using the 
-#' Kenward and Roger Wald Test in the Linear Mixed Model, In review.
+#' manuscript (see README)
 #' 
 convertToMultivariateDesign <- function(mixedDesign) {
   
@@ -61,11 +57,7 @@ convertToMultivariateDesign <- function(mixedDesign) {
 #' mixed model hypothesis if all sampling units had complete data.
 #' Please note that this is NOT a general purpose function,
 #' but makes assumptions specific to the validation study in the
-#' manuscript
-#' 
-#' Kreidler, S. M., Muller, K. E., & Glueck, D. H. 
-#' A Power Approximation for Longitudinal Studies Using the 
-#' Kenward and Roger Wald Test in the Linear Mixed Model, In review.
+#' manuscript (see README)
 #' 
 convertToMultivariateGLH <- function(mixedGLH) {
   # assumes a time x treatment interaction with 5 repeated measures
@@ -300,7 +292,7 @@ generateLongitudinalDesign = function(params) {
     Sigma = sigmaSq * 
       ar1Matrix(maxObservations,rho)
   } else {
-    # unstructured - assumes maxObservations is 5 (bad programmer, no cookie for u!)
+    # unstructured - assumes maxObservations is 5 
     Sigma = sigmaSq * matrix(c(1,0.4,0.2,0.3,0.2,
                                0.4,1,0.7,0.6,0.7,
                                0.2,0.7,1,0.6,0.5,
@@ -330,12 +322,8 @@ generateLongitudinalDesign = function(params) {
 #' 
 #' generateDesignsForManuscript
 #' 
-#' Generate the longitudinal study designs used in the validation
-#' experiment in the manuscript
-#' 
-#' Kreidler, S. M., Muller, K. E., & Glueck, D. H. 
-#' A Power Approximation for Longitudinal Studies Using the 
-#' Kenward and Roger Wald Test in the Linear Mixed Model, In review.
+#' Generate the longitudinal and cluster randomized study designs used in the 
+#' validation experiment in the manuscript (see README)
 #'   
 #' @param output.data.dir directory to which design/hypothesis information
 #' and design input parameter files are written
@@ -448,42 +436,6 @@ calculateEmpiricalPowerWithSAS <- function(output.data.dir) {
   return(empiricalPowerData)
 }
 
-#' 
-#' calculateExemplaryPowerWithSAS
-#' 
-#' Calls a SAS program included in the mixedPower package to
-#' generate the exemplary power results for the validation experiment
-#' in the manuscript
-#' 
-#' Kreidler, S. M., Muller, K. E., & Glueck, D. H. 
-#' A Power Approximation for Longitudinal Studies Using the 
-#' Kenward and Roger Wald Test in the Linear Mixed Model, In review.
-#'   
-#' @param output.data.dir directory to which exemplary power data files are written
-#'
-calculateExemplaryPowerWithSAS <- function(output.data.dir) {
-  # generate the common.sas file
-  
-  # call the sas code to run empirical power
-  result <- system(paste(c("sas.exe -i ", 
-                           paste(c(path.package("mixedPower"), 
-                                   "inst/sas/calculateStroupPower.sas"), 
-                                 collapse="/")), collapse=""), 
-                   intern = TRUE, show.output.on.console = TRUE)
-  # remove common.sas file
-  
-  
-  # load the empirical power results
-  exemplaryPowerData = read.csv(
-    paste(c(output.data.dir, "longitudinalExemplaryPower.csv"), collapse="/"),
-    stringsAsFactors=FALSE)
-  
-  # save as a Rdata file
-  save(exemplaryPowerData, file=paste(c(output.data.dir, "longitudinalExemplaryPower.RData"), collapse="/"))
-  
-  return(exemplaryPowerData)
-}
-
 #' calculateApproximatePowerForDesignList
 #' 
 #' Calculate approximate power values for a list of design/glh pairs.
@@ -571,7 +523,7 @@ summarizeResults = function(output.data.dir=".", output.figures.dir=".") {
   # save the max deviation info to a file
   save(maxDeviationData,
        file=paste(c(output.data.dir, "maxDeviationsByMethod.RData"), collapse="/"))
-  
+
   # convert to long with factor identifying power method
   powerDataLong = reshape(approximateAndEmpiricalPowerData, 
                           varying=c(
@@ -591,6 +543,13 @@ summarizeResults = function(output.data.dir=".", output.figures.dir=".") {
     
   # Plot deviation from empirical across all designs
   pdf(file=paste(c(output.figures.dir, "PowerBoxPlot_Overall.pdf"), collapse="/"), family="Times")
+  par(mfrow=c(1,1), lab=c(3,3,7))
+  boxplot(diff ~ method, data=powerDataLong[powerDataLong$method != "Stroup",], las=1, ylim=c(-0.5,0.5),
+          ylab="Deviation from Empirical Power")
+  abline(h=0,lty=3)
+  dev.off()
+  
+  tiff(paste(c(output.figures.dir, "PowerBoxPlot_Overall.tiff"), collapse="/"), units="in", width=5, height=4, res=300, compression = 'lzw')
   par(mfrow=c(1,1), lab=c(3,3,7))
   boxplot(diff ~ method, data=powerDataLong[powerDataLong$method != "Stroup",], las=1, ylim=c(-0.5,0.5),
           ylab="Deviation from Empirical Power")
@@ -689,10 +648,6 @@ summarizeResults = function(output.data.dir=".", output.figures.dir=".") {
   abline(h=0,lty=3)
   dev.off()
   
-
-  
-  
-  
   par(mfrow=c(4,1), oma=c(5,1,1,1), mar=c(1,4,0,0), lab=c(3,3,7))
   boxplot(diff ~ method, data=powerDataLong[powerDataLong$covariance=="CS" & powerDataLong$missingPercent==0.4,],
           xaxt='n', ylab="Compound Symmetry", las=1,
@@ -732,7 +687,7 @@ summarizeResults = function(output.data.dir=".", output.figures.dir=".") {
 #' The empirical power calculations may take several hours to run
 #'
 runSimulationStudy <- function(study.seed=5896, study.data.dir=".", study.figures.dir=".",
-                               study.runEmpirical=TRUE, study.runExemplary=TRUE) {
+                               study.runEmpirical=TRUE) {
   # set the random seed
   set.seed(study.seed)
   
@@ -753,28 +708,14 @@ runSimulationStudy <- function(study.seed=5896, study.data.dir=".", study.figure
     data("empiricalPower", package="mixedPower")
   }
   
-  # calculate approximate power using the exemplary data method
-  # described by Stroup et al.
-  if (study.runExemplary) {
-    cat("### Running exemplary data approximate power calculations\n")
-    # calculate empirical power for each design
-    exemplaryPowerData = calculateExemplaryDataPowerWithSAS(study.data.dir)
-    
-  } else {
-    cat("### Loading existing exemplary power data\n")
-    # load the existing empirical data 
-    data("exemplaryPower", package="mixedPower")
-  }
-  
   # calculate approximate power - runs in about 10-30 minutes
   cat("### Running approximate power calculations\n")
   approxPowerData = calculateApproximatePowerForDesignList(designList, study.data.dir)
   
   # combine the data into a single data set and write to disk
   cat("### Combining empirical and approximate values into common data set\n")
-  load(paste(c(output.data.dir,"longitudinalParams.RData"),collapse="/"))
+  load(paste(c(study.data.dir,"longitudinalParams.RData"),collapse="/"))
   approximateAndEmpiricalPowerData = data.frame(paramComboList, approxPowerData, 
-                                                exemplaryPower=exemplaryPowerData$exemplaryPower,
                                                 empiricalPower=empiricalPowerData$empiricalPower)
   # save to disk
   save(approximateAndEmpiricalPowerData,

@@ -213,48 +213,23 @@ summarizeResults.clusterRandomized = function() {
   abline(h=0, lty=3)  
   dev.off()
   
-}
-
-#
-# Applied example for the manuscript
-#
-# A proposed cluster-randomized trial in which
-# worksites are randomized to 2 smoking cessation programs
-#
-hennrikusExample = function() {
-  
-  completeSize = 30
-  clusterComplete = matrix(rep(1,completeSize))
-  incompleteSize = 20
-  clusterIncomplete = matrix(rep(1,incompleteSize))
-  
-  group1X = matrix(c(1,0), nrow=1)
-  group2X = matrix(c(0,1), nrow=1)
-  
-  design = new("design.mixed", name = "Hennrikus Examle", 
-               description = "Cluster randomized trial of smoking cessation intervention",
-               xPatternList = c(
-                 new("missingDataPattern", group=1, observations=1:completeSize, size=25,
-                     designMatrix=clusterComplete %x% group1X),
-                 new("missingDataPattern", group=1, observations=1:incompleteSize, size=15,
-                     designMatrix=clusterIncomplete %x% group1X),
-                 new("missingDataPattern", group=1, observations=1:completeSize, size=25,
-                     designMatrix=clusterComplete %x% group2X),
-                 new("missingDataPattern", group=1, observations=1:incompleteSize, size=15,
-                     designMatrix=clusterIncomplete %x% group2X)
-                 ),
-               beta = matrix(c(25,0)),
-               Sigma = (125^2) * (0.04 * (matrix(rep(1,30)) %*% t(matrix(rep(1,30)))) + 
-                                           diag(30) * (1 - 0.04))
-  )
-  # get the appropriate hypothesis
-  glh = new("glh.mixed",
-            alpha = 0.05,
-            fixedContrast = matrix(c(1,-1), nrow=1),
-            thetaNull = matrix(0),
-            test = "Wald, KR ddf")
-  
-  return(mixedPower(design, glh))
+  tiff(file="../inst/figures/ClusterPowerBoxPlots.tiff", units="in", width=5, height=5, res=300)
+  par(mfrow=c(1,3), oma=c(5,5,5,5), mar=c(5,2,1,1))
+  boxplot(powerResults$deviation ~ powerResults$numGroups, ylim=c(-0.1,0.1),
+          xlab="Total Treatment Groups")
+  abline(h=0, lty=3)
+  boxplot(powerResults$deviation ~ powerResults$clusterSize, ylim=c(-0.1,0.1),
+          xlab="Cluster Size")
+  abline(h=0, lty=3)
+  powerResults$ratio = factor(powerResults$missingPercent, 
+                              levels=c(0,0.2,0.4),
+                              labels=c("1", 
+                                       "0.8", 
+                                       "0.6"))
+  boxplot(powerResults$deviation ~ powerResults$ratio, ylim=c(-0.1,0.1),
+          xlab="Ratio of Incomplete to\ncomplete cluster sizes")
+  abline(h=0, lty=3)  
+  dev.off()
   
 }
 

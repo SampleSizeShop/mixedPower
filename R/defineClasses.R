@@ -48,11 +48,8 @@
 #' 
 #' @name missingDataPattern 
 #' @rdname missingDataPattern
-#' @note For theoretical details, please see
+#' @note For theoretical details, please see manuscript reference in README
 #' 
-#' Kreidler, S. M., Muller, K. E., & Glueck, D. H. 
-#' A Power Approximation for Longitudinal Studies Using the 
-#' Kenward and Roger Wald Test in the Linear Mixed Model, In review.
 #'
 setClass(
   "missingDataPattern",
@@ -83,11 +80,7 @@ setClass(
 #' 
 #' @name design.mixed 
 #' @rdname design.mixed
-#' @note For theoretical details, please see
-#' 
-#' Kreidler, S. M., Muller, K. E., & Glueck, D. H. 
-#' A Power Approximation for Longitudinal Studies Using the 
-#' Kenward and Roger Wald Test in the Linear Mixed Model, In review.
+#' @note For theoretical details, please see manuscript reference in README
 #'
 setClass (
   "design.mixed",
@@ -133,11 +126,7 @@ setClass (
 #' 
 #' @name glh.mixed 
 #' @rdname glh.mixed
-#' @note For theoretical details, please see
-#' 
-#' Kreidler, S. M., Muller, K. E., & Glueck, D. H. 
-#' A Power Approximation for Longitudinal Studies Using the 
-#' Kenward and Roger Wald Test in the Linear Mixed Model, In review.
+#' @note For theoretical details, please see manuscript reference in README
 #'
 setClass (
   "glh.mixed",
