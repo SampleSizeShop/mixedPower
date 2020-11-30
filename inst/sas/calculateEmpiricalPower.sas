@@ -1,11 +1,7 @@
 /*
 *
 * Calculate empirical power values for the validation study in
-* the manuscript
-*
-* Kreidler, S. M., Muller, K. E., & Glueck, D. H. 
-* A Power Approximation for Longitudinal Studies Using the 
-* Kenward and Roger Wald Test in the Linear Mixed Model, In review.
+* the manuscript in README
 */
 
 %include "common.sas";
