@@ -210,13 +210,13 @@ generateDesigns.longitudinal = function(output.data.dir=".") {
   # number of treatment groups
   numGroupsList = c(2, 4)
   # total ISUs per treatment group
-  perGroupNList = c(50, 100)
+  perGroupNList = c(50)
   # missing data pattern (either monotone or non-monotone)
   missingTypeList = c("monotone", "non-monotone")
   # percent missing
   missingPercentList = c(0, 0.2, 0.4)
   # covariance
-  covarianceList = c("CS", "CSH", "AR(1)")
+  covarianceList = c("AR(1)")
   # in all cases, we select the scale factor 
   # for beta to achieve the following power
   targetPowerList = c(0.2, 0.5, 0.8)
@@ -258,50 +258,54 @@ generateDesigns.longitudinal = function(output.data.dir=".") {
   
 }
 
-calculatePower.longitudinal = function(runEmpirical=FALSE) {
-  if (!file.exists(dataFile("longitudinalParams.csv")) ||
-        !file.exists(dataFile("longitudinalDesigns.RData"))) {
+calculatePower.longitudinal = function(data.dir=getwd(), figures.dir=getwd(),
+                                       runEmpirical=FALSE) {
+  if (!file.exists(file.path(data.dir,"longitudinalParams.csv")) ||
+        !file.exists(file.path(data.dir,"longitudinalDesigns.RData"))) {
     generateDesigns.longitudinal()
   }
   
   if (runEmpirical) {
     # exec SAS file to run empirical power for longitudinal designs
     # requires SAS installation
+    empiricalFile = file.path(data.dir,"longitudinalEmpirical.csv");
+    
+  } else {
+    empiricalFile = file.path(path.package("mixedPower"),"data","longitudinalEmpiricalPower.csv")
+
   }
   
-  empiricalFile = dataFile("longitudinalEmpirical.csv");
   if (!file.exists(empiricalFile)) {
     stop(paste(c("Missing empirical power file: ", empiricalFile), collapse=""))
   }
+  
   # load the empirical values
   powerResults = read.csv(empiricalFile)
   
   # load the designs and calculate power
-  load(dataFile("longitudinalDesigns.RData"))
+  load(file.path(data.dir,"longitudinalDesigns.RData"))
   approxPowerList = sapply(longitudinalDesignList, function(designAndGlh) {
     return(mixedPower(designAndGlh[[1]], designAndGlh[[2]]))
   })
   
   # combine with the empirical set and save to disk
   powerResults$approxPower = approxPowerList
-  write.csv(powerResults, file=dataFile("longitudinalResults.csv"))
+  write.csv(powerResults, file=file.path(data.dir,"longitudinalResults.csv"))
   
 }
 
 #
 # Build summary tables and power curves
 #
-summarizeResults.longitudinal = function() {
-  powerResults = read.csv(dataFile("longitudinalResults.csv"))
+summarizeResults.longitudinal = function(data.dir=getwd(), figures.dir=getwd()) {
+  powerResults = read.csv(file.path(data.dir,"longitudinalResults.csv"))
   
   powerResults$deviation = powerResults$approxPower - powerResults$empiricalPower
-  boxplot(powerResults$deviation, ylim=c(-0.1, 0.1))
-  boxplot(powerResults$deviation ~ powerResults$numGroups, ylim=c(-0.1, 0.1))
   mean(powerResults$deviation)
   range(powerResults$deviation)
   fivenum(powerResults$deviation)
   
-  pdf(file="../inst/figures/LongitudinalPowerBoxPlots.pdf", height=5)
+  pdf(file=file.path(figures.dir, "LongitudinalPowerBoxPlots.pdf"), height=5)
   par(mfrow=c(1,3), oma=c(5,5,5,5), mar=c(5,2,1,1))
   boxplot(powerResults$deviation ~ powerResults$numGroups, ylim=c(-0.1,0.1),
           xlab="Total Treatment Groups")
@@ -318,7 +322,8 @@ summarizeResults.longitudinal = function() {
   
   dev.off()
   
-  tiff(file="../inst/figures/LongitudinalPowerBoxPlots.tiff", units="in", width=5, height=5, res=300)
+  tiff(file=file.path(figures.dir, "LongitudinalPowerBoxPlots.tiff"), units="in", 
+                      width=5, height=5, res=300)
   par(mfrow=c(1,3), oma=c(5,5,5,5), mar=c(5,2,1,1))
   boxplot(powerResults$deviation ~ powerResults$numGroups, ylim=c(-0.1,0.1),
           xlab="Total Treatment Groups")

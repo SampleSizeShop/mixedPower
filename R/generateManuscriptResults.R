@@ -686,8 +686,9 @@ summarizeResults = function(output.data.dir=".", output.figures.dir=".") {
 #' @note 
 #' The empirical power calculations may take several hours to run
 #'
-runSimulationStudy <- function(study.seed=5896, study.data.dir=".", study.figures.dir=".",
-                               study.runEmpirical=TRUE) {
+runSimulationStudy <- function(study.seed=5896, study.data.dir=getwd(), 
+                               study.figures.dir=getwd(),
+                               study.runEmpirical=FALSE) {
   # set the random seed
   set.seed(study.seed)
   

@@ -18,14 +18,6 @@
 #
 
 #
-# Convenience routine for generate paths
-# to files in the data directory
-#
-dataFile = function(filename) {
-  return(paste(c("../data/", filename), collapse=""))
-}
-
-#
 # Identify the beta scale such that mixedPower returns the 
 # requested target power
 #
@@ -94,7 +86,7 @@ generateClusterRandomizedDesign = function(params) {
 
 
 
-generateDesigns.clusterRandomized = function() {
+generateDesigns.clusterRandomized = function(data.dir=getwd()) {
   #
   # For each cluster randomized design, we
   # vary the following parameters
@@ -141,48 +133,57 @@ generateDesigns.clusterRandomized = function() {
   paramComboList$betaScale = betaScaleList
   
   # write the parameter data to a csv file
-  write.csv(paramComboList, file=dataFile("clusterRandomizedParams.csv"),
+  write.csv(paramComboList, file=file.path(data.dir,"clusterRandomizedParams.csv"),
             row.names=FALSE, eol="\r\n")
   # write the designs to an Rdata file
-  save(clusterDesignList, file=dataFile("clusterRandomizedDesigns.RData"))
+  save(clusterDesignList, file=file.path(data.dir,"clusterRandomizedDesigns.RData"))
   
 }
 
-calculatePower.clusterRandomized = function(runEmpirical=FALSE) {
-  if (!file.exists(dataFile("clusterRandomizedParams.csv")) ||
-        !file.exists(dataFile("clusterRandomizedDesigns.RData"))) {
+calculatePower.clusterRandomized = function(data.dir=getwd(), 
+                                            figures.dir=getwd(),
+                                            runEmpirical=FALSE) {
+  if (!file.exists(file.path(data.dir,"clusterRandomizedParams.csv")) ||
+        !file.exists(file.path(data.dir,"clusterRandomizedDesigns.RData"))) {
     generateDesigns.clusterRandomized()
   }
   
   if (runEmpirical) {
     # exec SAS file to run empirical power for 4 group cluster designs
     # requires SAS installation
+    
+    empiricalFile = file.path(data.dir,"clusterRandomizedEmpirical.csv")
+    
+  } else {
+    empiricalFile = file.path(path.package("mixedPower"), "data","clusterRandomizedEmpirical.csv")
+    
   }
   
-  empiricalFile = dataFile("clusterRandomizedEmpirical.csv");
   if (!file.exists(empiricalFile)) {
     stop(paste(c("Missing empirical power file: ", empiricalFile), collapse=""))
   }
+  
   # load the empirical values
   powerResults = read.csv(empiricalFile)
   
   # load the designs and calculate power
-  load(dataFile("clusterRandomizedDesigns.RData"))
+  load(file.path(data.dir,"clusterRandomizedDesigns.RData"))
   approxPowerList = sapply(clusterDesignList, function(designAndGlh) {
     return(mixedPower(designAndGlh[[1]], designAndGlh[[2]]))
   })
 
   # combine with the empirical set and save to disk
   powerResults$approxPower = approxPowerList
-  write.csv(powerResults, dataFile("clusterRandomizedResults.csv"))
+  write.csv(powerResults, file.path(data.dir,"clusterRandomizedResults.csv"), row.names=F)
   
 }
 
 #
 # Build summary tables and power curves
 #
-summarizeResults.clusterRandomized = function() {
-  powerResults = read.csv(dataFile("clusterRandomizedResults.csv"))
+summarizeResults.clusterRandomized = function(data.dir=getwd(), 
+                                              figures.dir=getwd()) {
+  powerResults = read.csv(file.path(data.dir, "clusterRandomizedResults.csv"))
   
   # remove designs which violate assumption of Nd > q + pd + 1
   powerResults = powerResults[powerResults$clusterSize != 50 | 
@@ -195,7 +196,7 @@ summarizeResults.clusterRandomized = function() {
   range(powerResults$deviation)
   fivenum(powerResults$deviation)
   
-  pdf(file="../inst/figures/ClusterPowerBoxPlots.pdf", height=5)
+  pdf(file=file.path(figures.dir, "ClusterPowerBoxPlots.pdf"), height=5)
   par(mfrow=c(1,3), oma=c(5,5,5,5), mar=c(5,2,1,1))
   boxplot(powerResults$deviation ~ powerResults$numGroups, ylim=c(-0.1,0.1),
           xlab="Total Treatment Groups")
@@ -213,7 +214,8 @@ summarizeResults.clusterRandomized = function() {
   abline(h=0, lty=3)  
   dev.off()
   
-  tiff(file="../inst/figures/ClusterPowerBoxPlots.tiff", units="in", width=5, height=5, res=300)
+  tiff(file=file.path(figures.dir, "ClusterPowerBoxPlots.tiff"), units="in", 
+                      width=5, height=5, res=300)
   par(mfrow=c(1,3), oma=c(5,5,5,5), mar=c(5,2,1,1))
   boxplot(powerResults$deviation ~ powerResults$numGroups, ylim=c(-0.1,0.1),
           xlab="Total Treatment Groups")
@@ -233,4 +235,5 @@ summarizeResults.clusterRandomized = function() {
   
 }
 
-#generateDesigns.clusterRandomized()
+# calculatePower.clusterRandomized()
+# summarizeResults.clusterRandomized()
