@@ -202,7 +202,7 @@ generateLongitudinalDesign = function(params) {
 
 
 
-generateDesigns.longitudinal = function(output.data.dir=".") {
+generateDesigns.longitudinal = function(output.data.dir=getwd()) {
   #
   # For each longitudinal randomized design, we
   # vary the following parameters
@@ -250,11 +250,11 @@ generateDesigns.longitudinal = function(output.data.dir=".") {
   
   # write the parameter data to a csv file
   write.csv(paramComboList, 
-            file=paste(c(output.data.dir,"longitudinalParams.csv"),collapse="/"),
+            file=file.path(data.dir,"longitudinalParams.csv"),
             row.names=FALSE, eol="\r\n")
   # write the designs to an Rdata file
   save(longitudinalDesignList, 
-       file=paste(c(output.data.dir,"longitudinalDesigns.RData"),collapse="/"))
+       file=file.path(data.dir,"longitudinalDesigns.RData"))
   
 }
 
