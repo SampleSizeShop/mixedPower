@@ -264,62 +264,6 @@ generateDesigns.longitudinal = function(data.dir=getwd()) {
   
 }
 
-# 
-# generateDesigns.longitudinal = function(output.data.dir=getwd()) {
-#   #
-#   # For each longitudinal randomized design, we
-#   # vary the following parameters
-#   #
-#   # number of treatment groups
-#   numGroupsList = c(2, 4)
-#   # total ISUs per treatment group
-#   perGroupNList = c(50)
-#   # missing data pattern (either monotone or non-monotone)
-#   missingTypeList = c("monotone", "non-monotone")
-#   # percent missing
-#   missingPercentList = c(0, 0.2, 0.4)
-#   # covariance
-#   covarianceList = c("AR(1)")
-#   # in all cases, we select the scale factor 
-#   # for beta to achieve the following power
-#   targetPowerList = c(0.2, 0.5, 0.8)
-#   # maximum number of observations 
-#   maxObservationsList = c(5)
-#   
-#   # generate parameters
-#   paramList = list(targetPower=targetPowerList,
-#                    covariance=covarianceList,
-#                    missingType=missingTypeList,
-#                    missingPercent=missingPercentList,
-#                    perGroupN=perGroupNList,
-#                    numGroups=numGroupsList,
-#                    maxObservations=maxObservationsList)
-#   paramComboList = data.frame(expand.grid(paramList))
-#   
-#   #
-#   # Calculate the appropriate betaScale values
-#   # and build the list of designs
-#   #
-#   longitudinalDesignList = list()
-#   betaScaleList = vector()
-#   for(i in 1:length(paramComboList$numGroups)) {
-#     cat("Case ", i, "\n")
-#     params = paramComboList[i,]
-#     longitudinalDesignList[[i]] = list(generateLongitudinalDesign(params), 
-#                                   getGlh(params$numGroups, params$maxObservations))                                     
-#     betaScaleList[i] = longitudinalDesignList[[i]][[1]]@beta[1,1]
-#   }
-#   paramComboList$betaScale = betaScaleList
-#   
-#   # write the parameter data to a csv file
-#   write.csv(paramComboList, 
-#             file=file.path(data.dir,"longitudinalParams.csv"),
-#             row.names=FALSE, eol="\r\n")
-#   # write the designs to an Rdata file
-#   save(longitudinalDesignList, 
-#        file=file.path(data.dir,"longitudinalDesigns.RData"))
-#   
-# }
 
 calculatePower.longitudinal = function(data.dir=getwd(), figures.dir=getwd(),
                                        runEmpirical=FALSE) {
@@ -331,10 +275,17 @@ calculatePower.longitudinal = function(data.dir=getwd(), figures.dir=getwd(),
   if (runEmpirical) {
     # exec SAS file to run empirical power for longitudinal designs
     # requires SAS installation
+    result <- system(paste(c("sas.exe -i ", 
+                             file.path(path.package("mixedPower"), "inst",
+                                       "sas", "calculateEmpiricalPower.sas")), 
+                             collapse=""), 
+                     intern = TRUE, show.output.on.console = TRUE)
+    
     empiricalFile = file.path(data.dir,"longitudinalEmpirical.csv");
     
   } else {
-    empiricalFile = file.path(path.package("mixedPower"),"data","longitudinalEmpiricalPower.csv")
+    empiricalFile = file.path(path.package("mixedPower"),"data",
+                              "longitudinalEmpiricalPower.csv")
 
   }
   

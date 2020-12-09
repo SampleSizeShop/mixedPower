@@ -117,6 +117,12 @@ generateDesigns.clusterRandomized = function(data.dir=getwd()) {
                    numGroups=numGroupsList)
   paramComboList = data.frame(expand.grid(paramList))
   
+  # remove designs which violate assumption of Nd > q + pd + 1
+  paramComboList = paramComboList[paramComboList$clusterSize != 50 | 
+                                    paramComboList$perGroupN !=10,]
+  paramComboList = paramComboList[paramComboList$clusterSize != 5 | 
+                                paramComboList$numGroups != 2,]
+  
   #
   # Calculate the appropriate betaScale values
   # and build the list of designs
@@ -185,11 +191,7 @@ summarizeResults.clusterRandomized = function(data.dir=getwd(),
                                               figures.dir=getwd()) {
   powerResults = read.csv(file.path(data.dir, "clusterRandomizedResults.csv"))
   
-  # remove designs which violate assumption of Nd > q + pd + 1
-  powerResults = powerResults[powerResults$clusterSize != 50 | 
-                                powerResults$perGroupN !=10,]
-  powerResults = powerResults[powerResults$clusterSize != 5 | 
-                                powerResults$numGroups != 2,]
+
   
   powerResults$deviation = powerResults$approxPower - powerResults$empiricalPower
   mean(powerResults$deviation)
