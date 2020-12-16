@@ -157,10 +157,17 @@ calculatePower.clusterRandomized = function(data.dir=getwd(),
   if (runEmpirical) {
     # exec SAS file to run empirical power for 4 group cluster designs
     # requires SAS installation
+    result <- system(cat(paste(c("sas.exe -i ", 
+                                 file.path(path.package("mixedPower"), "inst",
+                                           "sas", "calculateEmpiricalPower.sas"),
+                                 ' -sysparm "', data.dir, '"'), 
+                               collapse="")), 
+                     intern = TRUE, show.output.on.console = TRUE)
     
     empiricalFile = file.path(data.dir,"clusterRandomizedEmpirical.csv")
     
   } else {
+    # use the pre-calculated empircal power
     empiricalFile = file.path(path.package("mixedPower"), "data","clusterRandomizedEmpirical.csv")
     
   }

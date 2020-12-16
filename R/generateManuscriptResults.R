@@ -20,10 +20,8 @@
 
 #' generateManuscriptResults
 #' 
-#' This function reproduces the simulation study results for the manuscript:\cr
-#' Kreidler, S. M., Muller, K. E., & Glueck, D. H. 
-#' A Power Approximation for Longitudinal Studies Using the 
-#' Kenward and Roger Wald Test in the Linear Mixed Model, In review.
+#' This function reproduces the simulation study results for the manuscript
+#' in the README file
 #'
 #' @param study.seed the random number seed (defaults to 7634)
 #' @param study.data.dir the directory into which data files are written (defaults to
@@ -101,9 +99,15 @@ runSimulationStudy <- function(study.data.dir=getwd(),
   abline(h=0,lty=3)
   dev.off()
   
-  cat("### Running applied example")
-  print(hennrikusExample())
 }
 
-
+#' runAppliedExample
+#' 
+#' This function runs the applied example in the manuscript seen in the
+#' README. It produces a power value as output
+#'
+runAppliedExample <- function() {
+  cat("### Running applied example")
+  hennrikusExample()
+}
 

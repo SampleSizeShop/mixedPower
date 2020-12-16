@@ -14,6 +14,6 @@
 %LET MODULES_DIR = .;
 
 * output directory for data sets, which are produced during data analysis;
-libname outData '..\..\data';
-%LET OUT_DATA_DIR = ..\..\data;
+libname outData '&SYSPARM';
+%LET OUT_DATA_DIR = &SYSPARM;
 
