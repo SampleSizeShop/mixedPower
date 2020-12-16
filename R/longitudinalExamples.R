@@ -275,12 +275,14 @@ calculatePower.longitudinal = function(data.dir=getwd(), figures.dir=getwd(),
   if (runEmpirical) {
     # exec SAS file to run empirical power for longitudinal designs
     # requires SAS installation
-    result <- system(cat(paste(c("sas.exe -i ", 
-                             file.path(path.package("mixedPower"), "inst",
-                                       "sas", "calculateEmpiricalPower.sas"),
-                             ' -sysparm "', data.dir, '"'), 
-                             collapse="")), 
-                     intern = TRUE, show.output.on.console = TRUE)
+    sasCommand = paste(c("sas.exe -i ", 
+                         file.path(path.package("mixedPower"), "inst",
+                                   "sas", "longitudinalExamples.sas"),
+                         ' -sysparm "', data.dir, '"'), 
+                       collapse="")
+    print("Running SAS Command:")
+    print(sasCommand)
+    result <- system(sasCommand, intern = TRUE, show.output.on.console = TRUE)
     
     empiricalFile = file.path(data.dir,"longitudinalEmpirical.csv");
     
