@@ -34,12 +34,9 @@
 #' @note 
 #' The empirical power calculations may take several hours to run
 #'
-runSimulationStudy <- function(study.seed=7634,
-                               study.data.dir=getwd(), 
+runSimulationStudy <- function(study.data.dir=getwd(), 
                                study.figures.dir=getwd(),
                                study.runEmpirical=FALSE) {
-  # set the random seed
-  set.seed(study.seed)
   
   # run longitudinal designs
   cat("### Calculating power for longitudinal designs\n")
