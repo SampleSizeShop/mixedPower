@@ -34,7 +34,8 @@
 #' @note 
 #' The empirical power calculations may take several hours to run
 #'
-runSimulationStudy <- function(study.data.dir=getwd(), 
+runSimulationStudy <- function(study.seed=7634,
+                               study.data.dir=getwd(), 
                                study.figures.dir=getwd(),
                                study.runEmpirical=FALSE) {
   # set the random seed
