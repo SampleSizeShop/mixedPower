@@ -157,7 +157,7 @@ calculatePower.clusterRandomized = function(data.dir=getwd(),
   if (runEmpirical) {
     # exec SAS file to run empirical power for 4 group cluster designs
     # requires SAS installation
-    sasCommand = paste(c("sas.exe -i ", 
+    sasCommand = paste(c("sas.exe -sysin ", 
                          file.path(path.package("mixedPower"), "inst",
                                    "sas", "clusterRandomizedExamples.sas"),
                          ' -sysparm "', data.dir, '"'), 

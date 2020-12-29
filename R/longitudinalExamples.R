@@ -172,8 +172,8 @@ generateLongitudinalDesign = function(params) {
   }
   
   # build sigma
-  rho = 0.04
-  sigmaSq = 1
+  rho = params$rho
+  sigmaSq = params$sigmaSq
   if (params$covariance == 'CS') {
     Sigma = heterogeneousCS(rep(1,maxObservations),rho)
   } else if (params$covariance == 'CSH') {
@@ -275,7 +275,7 @@ calculatePower.longitudinal = function(data.dir=getwd(), figures.dir=getwd(),
   if (runEmpirical) {
     # exec SAS file to run empirical power for longitudinal designs
     # requires SAS installation
-    sasCommand = paste(c("sas.exe -i ", 
+    sasCommand = paste(c("sas.exe -sysin ", 
                          file.path(path.package("mixedPower"), "inst",
                                    "sas", "longitudinalExamples.sas"),
                          ' -sysparm "', data.dir, '"'), 
