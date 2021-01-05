@@ -85,14 +85,16 @@ runSimulationStudy <- function(study.data.dir=getwd(),
   pdf(file=file.path(study.figures.dir, "PowerBoxPlot_Overall.pdf"), family="Times")
   par(mfrow=c(1,1), lab=c(3,3,7))
   boxplot(deviation ~ method, data=powerResults.combined, 
-          las=1, ylim=c(-0.5,0.5),
+          las=1, ylim=c(-0.1,0.1),
           ylab="Deviation from Empirical Power")
   abline(h=0,lty=3)
   dev.off()
   
-  tiff(paste(c(output.figures.dir, "PowerBoxPlot_Overall.tiff"), collapse="/"), units="in", width=5, height=4, res=300, compression = 'lzw')
+  tiff(file.path(study.figures.dir, "PowerBoxPlot_Overall.tiff"), units="in", 
+       width=7, height=7, res=300, compression = 'lzw')
   par(mfrow=c(1,1), lab=c(3,3,7))
-  boxplot(diff ~ method, data=powerDataLong[powerDataLong$method != "Stroup",], las=1, ylim=c(-0.5,0.5),
+  boxplot(deviation ~ method, data=powerResults.combined, 
+          las=1, ylim=c(-0.1,0.1),
           ylab="Deviation from Empirical Power")
   abline(h=0,lty=3)
   dev.off()
