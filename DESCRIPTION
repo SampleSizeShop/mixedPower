@@ -7,6 +7,6 @@ Author: Sarah Kreidler
 Maintainer: Sarah Kreidler <sarah.kreidler@ucdenver.edu>
 Description: The mixedPower package calculates approximate power for 
   longitudinal studies with and without missing data. 
-Depends: R (>= 3.0.0),  stats
+Depends: R (>= 4.0.0),  stats
 License: GPL-3
 
