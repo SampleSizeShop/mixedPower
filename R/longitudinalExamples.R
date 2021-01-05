@@ -289,7 +289,7 @@ calculatePower.longitudinal = function(data.dir=getwd(), figures.dir=getwd(),
   } else {
     # use the pre-calculated empircal power
     empiricalFile = file.path(path.package("mixedPower"),"data",
-                              "longitudinalEmpiricalPower.csv")
+                              "longitudinalEmpirical.csv")
 
   }
   
