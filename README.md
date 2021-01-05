@@ -23,10 +23,6 @@ To reproduce the results, perform the following steps:
 > install.packages("devtools")
 > library(devtools)
 ```
-* Install the "rPowerlib" package from Github.com
-```R
-> install_github("SampleSizeShop/rPowerlib")
-```
 * Install the "invWishartSum" package from Github.com
 ```R
 > install_github("SampleSizeShop/invWishartSum")
@@ -42,7 +38,7 @@ To reproduce the results, perform the following steps:
 * Run the simulation study. By default, data files and figures will be written to the
 current working directory. The study.data.dir and study.figures.dir arguments can 
 be used to override the defaults. Empirical results require a SAS (v9.4) installation.
-They take several hours to run, and so are turned off by default. A copy of the empirical 
+They take several days to run, and so are turned off by default. A copy of the empirical 
 results are included in the R package.
 ```R
 > runSimulationStudy(study.data.dir="myDataDir", study.figures.dir="myFiguresDir", study.runEmpirical=FALSE)

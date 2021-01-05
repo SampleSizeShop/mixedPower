@@ -96,10 +96,6 @@ proc import datafile="&OUT_DATA_DIR\longitudinalParams.csv"
      getnames=yes;
 run;
 
-data longitudinalParams;
-	set longitudinalParams(obs=6);
-run;
-
 /*
 * Calculate empirical power for the 4 group, cluster randomized trials
 */

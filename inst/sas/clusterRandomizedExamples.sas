@@ -41,9 +41,6 @@ proc import datafile="&OUT_DATA_DIR\clusterRandomizedParams.csv"
      getnames=yes;
 run;
 
-data clusterRandomizedParams;
-	set clusterRandomizedParams(firstObs=7 obs=9);
-run;
 /*
 * Calculate empirical power for the 4 group, cluster randomized trials
 */
