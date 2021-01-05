@@ -246,7 +246,7 @@ generateDesigns.longitudinal = function(data.dir=getwd()) {
   longitudinalDesignList = list()
   betaScaleList = vector()
   for(i in 1:length(paramComboList$numGroups)) {
-    cat("Case ", i, "\n")
+    cat("Longitudinal case ", i, "\n")
     params = paramComboList[i,]
     longitudinalDesignList[[i]] = list(generateLongitudinalDesign(params), 
                                        getGlh(params$numGroups, params$maxObservations))                                     

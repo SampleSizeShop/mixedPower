@@ -131,7 +131,7 @@ generateDesigns.clusterRandomized = function(data.dir=getwd()) {
   betaScaleList = vector()
   for(i in 1:length(paramComboList$numGroups)) {
     params = paramComboList[i,]
-    cat("Generating design ", i, "\n")
+    cat("Cluster randomized case ", i, "\n")
     clusterDesignList[[i]] = list(generateClusterRandomizedDesign(params), 
                                   getGlhByNumGroups(params$numGroups))                                     
     betaScaleList[i] = clusterDesignList[[i]][[1]]@beta[1,1]

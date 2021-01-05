@@ -37,9 +37,10 @@ To reproduce the results, perform the following steps:
 ```
 * Run the simulation study. By default, data files and figures will be written to the
 current working directory. The study.data.dir and study.figures.dir arguments can 
-be used to override the defaults. Empirical results require a SAS (v9.4) installation.
-They take several days to run, and so are turned off by default. A copy of the empirical 
-results are included in the R package.
+be used to override the defaults. Empirical results require a SAS (v9.4) installation,
+with sas.exe available in the system PATH.
+The empirical results take several days to run, and so are turned off by default. 
+A copy of the empirical results are included in the R package.
 ```R
 > runSimulationStudy(study.data.dir="myDataDir", study.figures.dir="myFiguresDir", study.runEmpirical=FALSE)
 ```
