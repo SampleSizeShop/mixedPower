@@ -99,6 +99,17 @@ runSimulationStudy <- function(study.data.dir=getwd(),
   abline(h=0,lty=3)
   dev.off()
   
+  summary_df = data.frame(
+    designType=c(rep("All Designs",5), rep("Cluster Randomized", 5),
+                 rep("Longitudinal", 5)),
+    stat=rep(c("Median", "Min", "1st quartile", "3rd quartile", "Max"), 3),
+    value=c(
+      round(quantile(powerResults.combined[powerResults.combined$method=="All Designs",]$deviation, probs=c(0.5,0,0.25,0.75,1)), 3),
+      round(quantile(powerResults.combined[powerResults.combined$method=="Cluster Randomized",]$deviation, probs=c(0.5,0,0.25,0.75,1)), 3),
+      round(quantile(powerResults.combined[powerResults.combined$method=="Longitudinal",]$deviation, probs=c(0.5,0,0.25,0.75,1)), 3)
+    )
+  )
+  write.csv(summary_df, file.path(study.data.dir, "powerDeviationSummary.csv"), row.names=F)
 }
 
 #' runAppliedExample
