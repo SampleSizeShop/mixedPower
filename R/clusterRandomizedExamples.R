@@ -103,7 +103,7 @@ generateDesigns.clusterRandomized = function(data.dir=getwd()) {
   # for beta to achieve the following power
   targetPowerList = c(0.2, 0.5, 0.8)
   # intracluster correlation
-  iccList = c(0.04)
+  iccList = c(0.04, 0.1, 0.2, 0.5)
   # sigma squared
   sigmaSqList = c(2)
   
