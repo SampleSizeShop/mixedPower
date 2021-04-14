@@ -84,7 +84,7 @@ runSimulationStudy <- function(study.data.dir=getwd(),
   # Plot deviation from empirical across all designs
   pdf(file=file.path(study.figures.dir, "PowerBoxPlot_Overall.pdf"), family="Times")
   par(mfrow=c(1,1), lab=c(3,3,7))
-  boxplot(deviation ~ method, data=powerResults.combined, 
+  boxplot(deviation ~ method, data=powerResults.combined, range=0,
           las=1, ylim=c(-0.1,0.1),
           ylab="Deviation from Empirical Power")
   abline(h=0,lty=3)
@@ -93,7 +93,7 @@ runSimulationStudy <- function(study.data.dir=getwd(),
   tiff(file.path(study.figures.dir, "PowerBoxPlot_Overall.tiff"), units="in", 
        width=7, height=7, res=300, compression = 'lzw')
   par(mfrow=c(1,1), lab=c(3,3,7))
-  boxplot(deviation ~ method, data=powerResults.combined, 
+  boxplot(deviation ~ method, data=powerResults.combined, range=0,
           las=1, ylim=c(-0.1,0.1),
           ylab="Deviation from Empirical Power")
   abline(h=0,lty=3)

@@ -325,16 +325,16 @@ summarizeResults.longitudinal = function(data.dir=getwd(), figures.dir=getwd()) 
   
   pdf(file=file.path(figures.dir, "LongitudinalPowerBoxPlots.pdf"), height=5)
   par(mfrow=c(1,3), oma=c(5,5,5,5), mar=c(5,2,1,1))
-  boxplot(powerResults$deviation ~ powerResults$numGroups, ylim=c(-0.1,0.1),
+  boxplot(powerResults$deviation ~ powerResults$numGroups, range=0, ylim=c(-0.1,0.1),
           xlab="Total Treatment Groups")
   abline(h=0, lty=3)
   powerResults$pattern = factor(powerResults$monotone, 
                               levels=c(1,0),
                               labels=c("Monotone", "Non"))
-  boxplot(powerResults$deviation ~ powerResults$pattern, ylim=c(-0.1,0.1),
+  boxplot(powerResults$deviation ~ powerResults$pattern, range=0, ylim=c(-0.1,0.1),
           xlab="Missing Data Pattern")
   abline(h=0, lty=3)
-  boxplot(powerResults$deviation ~ powerResults$missingPercent, ylim=c(-0.1,0.1),
+  boxplot(powerResults$deviation ~ powerResults$missingPercent, range=0, ylim=c(-0.1,0.1),
           xlab="Total Incomplete Sampling Units")
   abline(h=0, lty=3)
   
@@ -343,16 +343,16 @@ summarizeResults.longitudinal = function(data.dir=getwd(), figures.dir=getwd()) 
   tiff(file=file.path(figures.dir, "LongitudinalPowerBoxPlots.tiff"), units="in", 
                       width=7, height=5, res=300)
   par(mfrow=c(1,3), oma=c(5,5,5,5), mar=c(5,2,1,1))
-  boxplot(powerResults$deviation ~ powerResults$numGroups, ylim=c(-0.1,0.1),
+  boxplot(powerResults$deviation ~ powerResults$numGroups, range=0, ylim=c(-0.1,0.1),
           xlab="Total Treatment Groups")
   abline(h=0, lty=3)
   powerResults$pattern = factor(powerResults$monotone, 
                                 levels=c(1,0),
                                 labels=c("Monotone", "Non"))
-  boxplot(powerResults$deviation ~ powerResults$pattern, ylim=c(-0.1,0.1),
+  boxplot(powerResults$deviation ~ powerResults$pattern, range=0, ylim=c(-0.1,0.1),
           xlab="Missing Data Pattern")
   abline(h=0, lty=3)
-  boxplot(powerResults$deviation ~ powerResults$missingPercent, ylim=c(-0.1,0.1),
+  boxplot(powerResults$deviation ~ powerResults$missingPercent, range=0, ylim=c(-0.1,0.1),
           xlab="Total Incomplete Sampling Units")
   abline(h=0, lty=3)
   

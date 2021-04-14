@@ -209,10 +209,10 @@ summarizeResults.clusterRandomized = function(data.dir=getwd(),
   
   pdf(file=file.path(figures.dir, "ClusterPowerBoxPlots.pdf"), height=5)
   par(mfrow=c(1,3), oma=c(5,5,5,5), mar=c(5,2,1,1))
-  boxplot(powerResults$deviation ~ powerResults$numGroups, ylim=c(-0.1,0.1),
+  boxplot(powerResults$deviation ~ powerResults$numGroups, range=0, ylim=c(-0.1,0.1),
           xlab="Total Treatment Groups")
   abline(h=0, lty=3)
-  boxplot(powerResults$deviation ~ powerResults$clusterSize, ylim=c(-0.1,0.1),
+  boxplot(powerResults$deviation ~ powerResults$clusterSize, range=0, ylim=c(-0.1,0.1),
           xlab="Cluster Size")
   abline(h=0, lty=3)
   powerResults$ratio = factor(powerResults$missingPercent, 
@@ -220,7 +220,7 @@ summarizeResults.clusterRandomized = function(data.dir=getwd(),
                                 labels=c("1", 
                                          "0.8", 
                                          "0.6"))
-  boxplot(powerResults$deviation ~ powerResults$ratio, ylim=c(-0.1,0.1),
+  boxplot(powerResults$deviation ~ powerResults$ratio, range=0, ylim=c(-0.1,0.1),
           xlab="Ratio of Incomplete to\ncomplete cluster sizes")
   abline(h=0, lty=3)  
   dev.off()
@@ -228,10 +228,10 @@ summarizeResults.clusterRandomized = function(data.dir=getwd(),
   tiff(file=file.path(figures.dir, "ClusterPowerBoxPlots.tiff"), units="in", 
                       width=7, height=5, res=300)
   par(mfrow=c(1,3), oma=c(5,5,5,5), mar=c(5,2,1,1))
-  boxplot(powerResults$deviation ~ powerResults$numGroups, ylim=c(-0.1,0.1),
+  boxplot(powerResults$deviation ~ powerResults$numGroups, range=0, ylim=c(-0.1,0.1),
           xlab="Total Treatment Groups")
   abline(h=0, lty=3)
-  boxplot(powerResults$deviation ~ powerResults$clusterSize, ylim=c(-0.1,0.1),
+  boxplot(powerResults$deviation ~ powerResults$clusterSize, range=0, ylim=c(-0.1,0.1),
           xlab="Cluster Size")
   abline(h=0, lty=3)
   powerResults$ratio = factor(powerResults$missingPercent, 
@@ -239,7 +239,7 @@ summarizeResults.clusterRandomized = function(data.dir=getwd(),
                               labels=c("1", 
                                        "0.8", 
                                        "0.6"))
-  boxplot(powerResults$deviation ~ powerResults$ratio, ylim=c(-0.1,0.1),
+  boxplot(powerResults$deviation ~ powerResults$ratio, range=0, ylim=c(-0.1,0.1),
           xlab="Ratio of Incomplete to\ncomplete cluster sizes")
   abline(h=0, lty=3)  
   dev.off()
